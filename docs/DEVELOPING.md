@@ -23,9 +23,9 @@ src/esapf/
     metrics.py       suppression, band statistics           (§3)
     network.py       Section / Network: R [kΩ], C [nF] ↔ τ [s]
     legacy.py        original-program quirks: VB Val(), display formats, error messages
-    eseries.py       IEC 60063 E6…E192 tables, nearest standard value
+    eseries.py       IEC 60063 E6…E192 tables, nearest value, best series pair
   form.py          FormState: window state as displayed text + button semantics (no Qt)
-  bill.py          BillState: the same for Bill Mode (ohms, E-series, axis range)
+  bill.py          BillState: the same for Bill Mode (ohms, E-series, pairs, C units, axis)
   gui/             Qt widgets only render FormState / BillState and forward events
     layout.py        geometry, colours, fonts, tooltips of the 2002 window
     graph.py         QPainter replica of the original graph

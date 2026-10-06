@@ -8,8 +8,17 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
 from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton, QWidget
 
-from esapf.bill import MSG_AXIS, BillState, InputError, format_f, format_ohm
-from esapf.core.eseries import SERIES, nearest
+from esapf.bill import (
+    CAPACITOR_CHOICES,
+    MSG_AXIS,
+    BillState,
+    InputError,
+    format_c,
+    format_f,
+    format_ohm,
+    parse_c_nf,
+)
+from esapf.core.eseries import SERIES, nearest, nearest_pair, values_between
 from esapf.form import FormState
 from esapf.gui.app import ModeSwitcher
 from esapf.gui.bill_window import BillWindow, header_text
@@ -56,6 +65,30 @@ def test_nearest_rejects_non_positive() -> None:
         nearest(0, "E12")
 
 
+def test_values_between() -> None:
+    assert values_between("E6", 0.01, 1000)[:7] == [0.01, 0.015, 0.022, 0.033, 0.047, 0.068, 0.1]
+    assert len(values_between("E6", 0.01, 1000)) == 31
+    assert values_between("E12", 1000, 2000) == [1000.0, 1200.0, 1500.0, 1800.0]
+
+
+@pytest.mark.parametrize("series", ["E6", "E24", "E96"])
+@pytest.mark.parametrize("value", [5170.43, 1493.78, 50401.92, 174456.75, 47.0, 0.37])
+def test_nearest_pair_is_optimal(value: float, series: str) -> None:
+    a, b = nearest_pair(value, series)
+    assert a >= b and a in values_between(series, a, a) and b in values_between(series, b, b)
+    parts = values_between(series, value / 1000, value)
+    brute = min(abs(x + y - value) for x in parts for y in parts)
+    assert abs(a + b - value) == pytest.approx(brute, abs=1e-9 * value)
+
+
+def test_nearest_pair_examples() -> None:
+    assert nearest_pair(5170.43, "E24") == (4700.0, 470.0)
+    assert nearest_pair(174456.75, "E96") == (174000.0, 453.0)  # tie-break: big main part
+    assert nearest_pair(2000.0, "E6") == (1000.0, 1000.0)  # two equal parts are allowed
+    with pytest.raises(ValueError):
+        nearest_pair(-1, "E6")
+
+
 # --- BillState ---------------------------------------------------------------------------
 
 
@@ -73,7 +106,7 @@ def test_design_matches_classic_in_ohms() -> None:
             assert float(b) == pytest.approx(float(k) * 1000, abs=0.005)
     assert bill.cells["F1"][:3] == ["91.23", "688.79", "3078.17"]
     assert bill.cells["S1"][:3] == ["180000.00", "24000.00", "5100.00"]  # E24 default
-    assert bill.cells["C1"][:3] == ["10"] * 3
+    assert bill.cells["C1"][:3] == ["10 nF"] * 3
 
 
 def test_series_and_source() -> None:
@@ -124,6 +157,77 @@ def test_axis() -> None:
         with pytest.raises(InputError, match=MSG_AXIS.replace("(", r"\(").replace(")", r"\)")):
             st.set_axis(lo, hi)
     assert st.axis == (20.0, 20000.0)  # unchanged after an error
+
+
+def test_capacitor_choices() -> None:
+    assert CAPACITOR_CHOICES[0] == "10 pF" and CAPACITOR_CHOICES[-1] == "1 µF"
+    assert "4.7 nF" in CAPACITOR_CHOICES and "680 nF" in CAPACITOR_CHOICES
+    assert len(CAPACITOR_CHOICES) == 31
+    assert [format_c(c) for c in (0.0047, 4.7, 4700)] == ["4.7 pF", "4.7 nF", "4.7 µF"]
+    for text in CAPACITOR_CHOICES:  # every choice reads back as itself
+        assert format_c(parse_c_nf(text)) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "nf"),
+    [("10", 10.0), (" 10 pF", 0.01), ("4.7n", 4.7), ("1µF", 1000.0), ("1uf", 1000.0),
+     ("0.1 μF", 100.0), ("2.2e1 nF", 22.0), (".5", 0.5),
+     ("", 0.0), ("abc", 0.0), ("10 mF", 0.0), ("-10", 0.0)],
+)  # fmt: skip
+def test_parse_c_nf(text: str, nf: float) -> None:
+    assert parse_c_nf(text) == pytest.approx(nf)
+
+
+def test_changing_c_after_design_recalculates_r() -> None:
+    st = BillState()
+    st.design()
+    f_before = st.cells["F1"][:3]
+    st.set_cell("C1", 1, "22 nF")
+    assert st.cells["R1"][0] == "79298.52"  # 174456.75 Ω * 10 / 22
+    assert st.cells["R1"][1:3] == ["23106.61", "5170.43"]
+    assert st.cells["F1"][:3] == f_before  # 90° frequencies kept
+    assert st.cells["S1"][0] == "82000.00"
+    assert st.ideal is not None and st.ideal.path1[0].c_nf == 22.0
+    st.set_cell("C2", 3, "")  # invalid: nothing recalculated until it is valid again
+    st.set_cell("C1", 2, "4.7 nF")
+    assert st.cells["R1"][1] == "23106.61"
+    st.set_cell("C2", 3, "10n")
+    assert st.cells["R1"][1] == "49163.01"
+    st.set_cell("R1", 3, "5000")  # a manual R ends the link to the design
+    st.set_cell("C1", 3, "1 nF")
+    assert st.cells["R1"][2] == "5000"
+    st.phase()  # Phase reads the C units
+    assert st.ideal.path1[2].c_nf == 1.0  # type: ignore[union-attr]
+
+
+def test_pair_mode() -> None:
+    st = BillState()
+    st.select_resistors("pair")
+    st.design()
+    assert st.cells["S1"][:3] == ["150000.00 + 24000.00", "22000.00 + 1100.00", "4700.00 + 470.00"]
+    assert st.standard is not None
+    assert st.standard.path1[2].r_kohm == pytest.approx(5.17)
+    st.select_source("series")
+    assert st.band_summary() == "270–3600 Hz: max error 0.3241°, min suppression 51.0 dB"
+    single = BillState(source="series")
+    single.design()
+    assert "max error 2.97" in single.band_summary()  # E24 singles are 9x worse here
+    st.select_resistors("single")
+    assert st.cells["S1"][2] == "5100.00"
+    with pytest.raises(ValueError):
+        st.select_resistors("triple")
+
+
+def test_default_c_takes_units() -> None:
+    st = BillState(c="0.1u")
+    st.design()
+    assert st.cells["C1"][0] == "100 nF"
+    assert st.ideal is not None and st.ideal.path1[0].c_nf == pytest.approx(100.0)
+    for bad in ("", "0", "x"):
+        with pytest.raises(InputError, match="Capacitor"):
+            BillState(c=bad).design()
+    with pytest.raises(InputError, match="F1"):  # F1 is still checked first
+        BillState(f1="5", c="").design()
 
 
 def test_select_n_clears() -> None:
@@ -183,8 +287,9 @@ def test_window_flow(app: QApplication, messages: list[str]) -> None:
 
 def test_header_text() -> None:
     assert [header_text(c, "E12") for c in ("F1", "R2", "S1", "C2")] == [
-        "F1 (Hz)", "R2 (Ω)", "R1 E12 (Ω)", "C2 (nF)",
+        "F1 (Hz)", "R2 (Ω)", "R1 E12 (Ω)", "C2",
     ]  # fmt: skip
+    assert header_text("S2", "E96", "pair") == "R2 E96 pair (Ω)"
 
 
 def test_mode_switch_carries_inputs(app: QApplication) -> None:
@@ -213,3 +318,26 @@ def test_classic_bill_mode_button_fits(app: QApplication) -> None:
     assert b.fontMetrics().horizontalAdvance(b.text()) <= b.width() - 4  # inside the border
     design = next(x for x in w.findChildren(QPushButton) if x.text() == "Design")
     assert design.geometry().right() < b.geometry().left()
+
+
+def test_window_capacitor_box_and_pairs(app: QApplication, messages: list[str]) -> None:
+    w = BillWindow()
+    w.show()
+    button(w, "Design").click()
+    box = w.c_boxes["C1"][0]
+    assert box.count() == 31 and box.isEnabled() and not w.c_boxes["C1"][3].isEnabled()
+    assert w.cells["C1"][0].text() == "10 nF"
+    box.textActivated.emit("22 nF")  # what a pick from the list sends
+    assert w.state.cells["C1"][0] == "22 nF"
+    assert w.cells["R1"][0].text() == "79298.52"
+    line = box.lineEdit()
+    assert line is not None
+    line.textEdited.emit("4.7n")  # typing
+    assert w.cells["R1"][0].text() == "371184.58"  # from the exact τ, not the rounded R
+    button(w, "Pair (sum)").click()
+    assert w.headers["S1"].text() == "R1 E24 pair (Ω)"
+    assert w.cells["S1"][2].text() == "4700.00 + 470.00"
+    button(w, "Single").click()
+    assert w.cells["S1"][2].text() == "5100.00"
+    button(w, "Clear").click()
+    assert line.text() == "" and messages == []

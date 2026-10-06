@@ -22,7 +22,11 @@ to switch between them (F1, F2, C and the section
 count carry over), or start with `esapf-gui --bill`. Bill Mode shows:
 
 - 90° frequencies to 2 decimal places and resistances in ohms (to 0.01 Ω);
-- the nearest E6, E12, E24, E48, E96 or E192 resistor next to each calculated value;
+- the nearest E6, E12, E24, E48, E96 or E192 resistor next to each calculated value, or the
+  pair from that series whose sum comes closest;
+- a drop-down list of E6 capacitors (10 pF to 1 µF) for each section, which also accepts typed
+  values such as `4.7n` or `0.1µ`. After Design, changing a capacitor recalculates that
+  section's resistor so its 90° frequency stays put;
 - the graph from either the perfect or the E-series resistors, with a settable X-axis range,
   a frequency scale, and the worst-case error and suppression in the F1–F2 band.
 

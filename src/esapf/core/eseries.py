@@ -41,3 +41,37 @@ def nearest(value: float, series: str) -> float:
         return candidates[0]
     below, above = candidates[i - 1], candidates[min(i, len(candidates) - 1)]
     return below if value - below <= above - value else above
+
+
+def values_between(series: str, lo: float, hi: float) -> list[float]:
+    """All values of a series from lo to hi inclusive, ascending."""
+    out = []
+    for d in range(floor(log10(lo)) - 1, floor(log10(hi)) + 2):
+        for m in SERIES[series]:
+            v = round(m * 10.0**d, 12 - d)
+            if lo * (1 - 1e-9) <= v <= hi * (1 + 1e-9):
+                out.append(v)
+    return out
+
+
+# Parts below value / PAIR_MIN_RATIO change the sum by less than 0.1 % and are not considered.
+PAIR_MIN_RATIO = 1000.0
+
+
+def nearest_pair(value: float, series: str) -> tuple[float, float]:
+    """Two series values (larger first) whose sum is closest to value.
+
+    On a tie the pair with the larger main resistor wins, so the second part is a trim."""
+    if value <= 0:
+        raise ValueError("value must be > 0")
+    parts = values_between(series, value / PAIR_MIN_RATIO, value)  # spans 3 decades
+    best = (parts[-1], parts[0])
+    best_err = abs(sum(best) - value)
+    for i in range(len(parts) - 1, -1, -1):
+        a = parts[i]
+        j = bisect_left(parts, value - a, 0, i + 1)  # b <= a
+        for b in parts[max(j - 1, 0) : min(j + 1, i + 1)]:
+            err = abs(a + b - value)
+            if err < best_err - 1e-9 * value:
+                best, best_err = (a, b), err
+    return best

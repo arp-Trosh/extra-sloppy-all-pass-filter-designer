@@ -8,6 +8,7 @@ from functools import partial
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QComboBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -19,21 +20,28 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from esapf.bill import SERIES_NAMES, BillState, InputError
+from esapf.bill import CAPACITOR_CHOICES, RESISTOR_MODES, SERIES_NAMES, BillState, InputError
 from esapf.form import MAX_SECTIONS, SCALES
 from esapf.gui.bill_graph import BillGraph
 
 TITLE = "Extra Sloppy All Pass Filter Designer: Bill Mode"
 SOURCE_LABELS = {"ideal": "Perfect R", "series": "E-series R"}
+RESISTOR_LABELS = {"single": "Single", "pair": "Pair (sum)"}
 READ_ONLY = ("F1", "S1", "F2", "S2")
-UNITS = {"F": "Hz", "R": "Ω", "C": "nF"}
+UNITS = {"F": "Hz", "R": "Ω"}
+TIP_C_CELL = (
+    "Pick an E6 value or type one: a bare number is nF; p, n and µ (or u) are also accepted."
+    " After Design, changing C recalculates R to keep the 90° frequency."
+)
 
 
-def header_text(col: str, series: str) -> str:
-    """Column heading: F1 (Hz), R1 (Ω), R1 E24 (Ω), C1 (nF), ..."""
+def header_text(col: str, series: str, resistors: str = "single") -> str:
+    """Column heading: F1 (Hz), R1 (Ω), R1 E24 (Ω), R1 E24 pair (Ω), C1, ..."""
     kind, path = col[0], col[1]
     if kind == "S":
-        return f"R{path} {series} (Ω)"
+        return f"R{path} {series}{' pair' if resistors == 'pair' else ''} (Ω)"
+    if kind == "C":
+        return f"C{path}"
     return f"{kind}{path} ({UNITS[kind]})"
 
 
@@ -53,7 +61,9 @@ class BillWindow(QWidget):
         g = QGridLayout(inputs)
         self.f1 = self._edit(lambda t: setattr(self.state, "f1", t), "Lower band edge, Hz (≥ 10)")
         self.f2 = self._edit(lambda t: setattr(self.state, "f2", t), "Upper band edge, Hz (≥ 10)")
-        self.c = self._edit(lambda t: setattr(self.state, "c", t), "Default capacitor, nF")
+        self.c = self._edit(
+            lambda t: setattr(self.state, "c", t), "Default capacitor: nF, or with p, n or µ"
+        )
         for row, (label, edit, unit) in enumerate(
             (("F1", self.f1, "Hz"), ("F2", self.f2, "Hz"), ("C", self.c, "nF"))
         ):
@@ -100,6 +110,17 @@ class BillWindow(QWidget):
             lambda i: self._run(lambda: self.state.select_source(sources[i])),
         )  # fmt: skip
         o.addLayout(source_row)
+        parts_row = QHBoxLayout()
+        parts_row.addWidget(QLabel("Resistors:"))
+        modes = list(RESISTOR_LABELS)
+        self.resistor_group, self.resistor_buttons = self._choice(
+            parts_row, list(RESISTOR_LABELS.values()),
+            lambda i: self._run(lambda: self.state.select_resistors(modes[i])),
+        )  # fmt: skip
+        self.resistor_buttons[1].setToolTip(
+            "Two resistors from the selected series whose sum is closest to the calculated R"
+        )
+        o.addLayout(parts_row)
         self.classic_button = QPushButton("Classic Mode")
         self.classic_button.setToolTip("Switch to the original 2002 window (Ctrl+B)")
         o.addWidget(self.classic_button)
@@ -109,16 +130,26 @@ class BillWindow(QWidget):
         table = QGridLayout()
         root.addLayout(table)
         self.headers: dict[str, QLabel] = {}
-        self.cells: dict[str, list[QLineEdit]] = {}
+        self.cells: dict[str, list[QLineEdit]] = {}  # for C columns, the combo's line edit
+        self.c_boxes: dict[str, list[QComboBox]] = {}
         for c, col in enumerate(self.state.cells, start=1):
             self.headers[col] = QLabel()
             self.headers[col].setAlignment(Qt.AlignmentFlag.AlignCenter)
             table.addWidget(self.headers[col], 0, c)
+            table.setColumnStretch(c, 2 if col[0] == "S" else 1)  # room for "a + b"
             self.cells[col] = []
             for row in range(1, MAX_SECTIONS + 1):
-                e = self._edit(self._cell_setter(col, row))
-                table.addWidget(e, row, c)
-                self.cells[col].append(e)
+                if col[0] == "C":
+                    box = self._c_box(col, row)
+                    self.c_boxes.setdefault(col, []).append(box)
+                    table.addWidget(box, row, c)
+                    line = box.lineEdit()
+                    assert line is not None
+                    self.cells[col].append(line)
+                else:
+                    e = self._edit(self._cell_setter(col, row))
+                    table.addWidget(e, row, c)
+                    self.cells[col].append(e)
         self.row_labels = [QLabel(f"({row})") for row in range(1, MAX_SECTIONS + 1)]
         for row, row_label in enumerate(self.row_labels, start=1):
             table.addWidget(row_label, row, 0)
@@ -180,6 +211,27 @@ class BillWindow(QWidget):
     def _cell_setter(self, col: str, row: int) -> Callable[[str], None]:
         return lambda text: self.state.set_cell(col, row, text)
 
+    def _c_box(self, col: str, row: int) -> QComboBox:
+        """U6: editable capacitor drop-down; a new C may recalculate R, hence the refresh."""
+        box = QComboBox()
+        box.setEditable(True)
+        box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        box.addItems(CAPACITOR_CHOICES)
+        box.setMaxVisibleItems(len(CAPACITOR_CHOICES))
+        box.setCurrentIndex(-1)
+        box.setToolTip(TIP_C_CELL)
+        line = box.lineEdit()
+        assert line is not None
+        line.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        def changed(text: str) -> None:
+            self.state.set_cell(col, row, text)
+            self.refresh()
+
+        line.textEdited.connect(changed)
+        box.textActivated.connect(changed)
+        return box
+
     # --- actions ---------------------------------------------------------------------------
 
     def _run(self, action: Callable[[], None]) -> None:
@@ -207,13 +259,14 @@ class BillWindow(QWidget):
             if widget.text() != text:
                 widget.setText(text)
         for col, header in self.headers.items():
-            header.setText(header_text(col, st.series))
+            header.setText(header_text(col, st.series, st.resistors))
         for col, widgets in self.cells.items():
             for row, w in enumerate(widgets):
                 active = row < st.n
                 if w.text() != st.cells[col][row]:
                     w.setText(st.cells[col][row])
-                w.setEnabled(active)
+                boxes = self.c_boxes.get(col)
+                (boxes[row] if boxes else w).setEnabled(active)
                 if w.isReadOnly() != (col in READ_ONLY):
                     w.setReadOnly(col in READ_ONLY)
                     w.style().polish(w)  # re-apply the readOnly style rule
@@ -223,6 +276,7 @@ class BillWindow(QWidget):
         self.scale_buttons[SCALES.index(st.scale)].setChecked(True)
         self.series_buttons[SERIES_NAMES.index(st.series)].setChecked(True)
         self.source_buttons[list(SOURCE_LABELS).index(st.source)].setChecked(True)
+        self.resistor_buttons[RESISTOR_MODES.index(st.resistors)].setChecked(True)
         band = st.band if st.band[0] > 0 else None
         self.graph.set_data(st.network, st.scale_value, st.axis, band)
         self.summary.setText(st.band_summary())
