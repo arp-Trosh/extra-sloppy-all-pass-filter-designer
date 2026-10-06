@@ -142,9 +142,46 @@ truncated series no longer converges well:
 | 10–100000 Hz, n = 6 | **0.86°** | **9.97°** |
 
 More series terms help, but they converge slowly once F2/F1 is above about 50. For example,
-`oppelt_design(..., nome_terms=7, tau_terms=8)` still gives 0.0611° at 50–5000 Hz. An exact
-design should evaluate K, q and cs() directly (AGM / `scipy.special.ellipj`), which is backlog
-item 6.2. `tests/test_elliptic.py` already contains such a reference using mpmath.
+`oppelt_design(..., nome_terms=7, tau_terms=8)` still gives 0.0611° at 50–5000 Hz. The exact
+design in §4.4 (`elliptic_design`, used by Bill Mode) gives the optimal values in the left column.
+
+### 4.4 Any total number of sections, odd or even (`elliptic_design`, Bill Mode)
+
+The equiripple solution is really defined for **N poles in total**, not n per path. Place them at
+
+```
+k_j = (2j + 1) / (4N),   j = 0 … N−1,     τ_j = cs(2K·k_j, k) / ω1                 [proven]
+```
+
+and give them alternately to the two paths: path 1 takes even j, path 2 takes odd j. Because
+cs(K − u)·cs(u) = k′, pole j and pole N−1−j are reciprocal partners: τ_j·τ_{N−1−j} = 1/(ω1ω2).
+
+- **Even N = 2n:** the even j are exactly Oppelt's k_v = (4v + 1)/(8n) (eq. 10), and every
+  path-1 pole's partner is in path 2 (eq. 12). This is the design of §4.
+- **Odd N:** path 1 gets (N + 1)/2 sections and path 2 gets (N − 1)/2. The middle pole
+  j = (N − 1)/2 is its own partner, τ = 1/√(ω1ω2), so its f90 is the geometric centre √(F1·F2).
+  It is in path 1 when N ≡ 1 (mod 4) and in path 2 otherwise. Above the band, path 1 has one
+  extra 180° of phase lag, but inside the band the difference is still 90° ± ε.
+
+In both cases the error ripples equally, reaching ±ε_max N + 1 times across the band
+(Chebyshev alternation), with
+
+```
+ε_max ≈ 4 · q^N  radians          (asymptotic; within 0.2 % once ε_max < 1°)              [proven]
+```
+
+So each extra section, odd or even, multiplies the error by about q. For 270–3600 Hz:
+
+| N | 5 | 6 | 7 | 8 | 9 | 11 | 12 |
+|---|---|---|---|---|---|---|---|
+| ε_max | 0.462° | 0.133° | 0.0386° | 0.0111° | 0.0032° | 0.00027° | 0.00008° |
+
+`elliptic_design(f1, f2, total)` computes q exactly with the arithmetic-geometric mean,
+q = exp(−π·agm(1, k′)/agm(1, k)), and sums eq. 11's theta series until its terms fall below
+1e-18. This removes the truncation problem of §4.3. For even N it agrees with
+`oppelt_design(f1, f2, N/2)` to within 2·10⁻⁷ relative for speech bands; that is at most 0.04 Ω
+on a 174 kΩ resistor. `oppelt_design()` and the classic window are unchanged.
+`tests/test_elliptic.py` checks all of this against mpmath's Jacobi functions.
 
 ## 5. Graph geometry of the original (for the replica)
 

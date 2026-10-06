@@ -98,12 +98,14 @@ def test_formats() -> None:
 
 
 def test_design_matches_classic_in_ohms() -> None:
+    """Bill Mode uses the exact design; for speech bands it is within 0.04 Ω (2e-7) of the
+    original's truncated series."""
     classic, bill = FormState(), BillState()
     classic.design()
     bill.design()
     for col in ("R1", "R2"):
         for k, b in zip(classic.cells[col][:3], bill.cells[col][:3], strict=True):
-            assert float(b) == pytest.approx(float(k) * 1000, abs=0.005)
+            assert abs(float(b) - float(k) * 1000) < 0.04 + 0.005  # + display rounding
     assert bill.cells["F1"][:3] == ["91.23", "688.79", "3078.17"]
     assert bill.cells["S1"][:3] == ["180000.00", "24000.00", "5100.00"]  # E24 default
     assert bill.cells["C1"][:3] == ["10 nF"] * 3
@@ -134,7 +136,7 @@ def test_series_before_design_is_harmless() -> None:
 
 
 def test_phase_reads_ohms() -> None:
-    st = BillState(n=1)
+    st = BillState(sections=2)
     st.set_cell("R1", 1, "15915.49")  # 1/(2π·15915.49 Ω·10 nF) ≈ 1000 Hz
     st.set_cell("C1", 1, "10")
     st.set_cell("R2", 1, "1591.55")
@@ -183,14 +185,14 @@ def test_changing_c_after_design_recalculates_r() -> None:
     st.design()
     f_before = st.cells["F1"][:3]
     st.set_cell("C1", 1, "22 nF")
-    assert st.cells["R1"][0] == "79298.52"  # 174456.75 Ω * 10 / 22
-    assert st.cells["R1"][1:3] == ["23106.61", "5170.43"]
+    assert st.cells["R1"][0] == "79298.54"  # 174456.79 Ω * 10 / 22
+    assert st.cells["R1"][1:3] == ["23106.62", "5170.43"]
     assert st.cells["F1"][:3] == f_before  # 90° frequencies kept
     assert st.cells["S1"][0] == "82000.00"
     assert st.ideal is not None and st.ideal.path1[0].c_nf == 22.0
     st.set_cell("C2", 3, "")  # invalid: nothing recalculated until it is valid again
     st.set_cell("C1", 2, "4.7 nF")
-    assert st.cells["R1"][1] == "23106.61"
+    assert st.cells["R1"][1] == "23106.62"
     st.set_cell("C2", 3, "10n")
     assert st.cells["R1"][1] == "49163.01"
     st.set_cell("R1", 3, "5000")  # a manual R ends the link to the design
@@ -230,11 +232,36 @@ def test_default_c_takes_units() -> None:
         BillState(f1="5", c="").design()
 
 
-def test_select_n_clears() -> None:
+def test_select_sections_clears() -> None:
     st = BillState()
     st.design()
-    st.select_n(5)
-    assert st.n == 5 and st.ideal is None and st.cells["S1"] == [""] * 6
+    st.select_sections(5)
+    assert st.sections == 5 and st.ideal is None and st.cells["S1"] == [""] * 6
+    for bad in (1, 13, True):
+        with pytest.raises(ValueError):
+            st.select_sections(bad)
+
+
+@pytest.mark.parametrize(("total", "rows", "error"), [
+    (3, (2, 1), "5.5262"), (5, (3, 2), "0.4618"), (7, (4, 3), "0.0386"),
+    (9, (5, 4), "0.0032"), (11, (6, 5), "0.0003"), (12, (6, 6), "0.0001"),
+])  # fmt: skip
+def test_odd_totals(total: int, rows: tuple[int, int], error: str) -> None:
+    st = BillState(sections=total)
+    assert (st.rows(1), st.rows(2)) == rows
+    st.design()
+    for p, n in enumerate(rows, start=1):
+        for col in "FRSC":
+            cells = st.cells[f"{col}{p}"]
+            assert all(cells[:n]) and not any(cells[n:]), (col, p)
+    assert f"max error {error}" in st.band_summary()
+    f1 = [float(f) for f in st.cells["F1"][: rows[0]]]
+    f2 = [float(f) for f in st.cells["F2"][: rows[1]]]
+    assert f1 == sorted(f1) and f2 == sorted(f2, reverse=True)
+    st.phase()  # unequal paths read back correctly
+    assert st.ideal is not None and len(st.ideal.path1) == rows[0]
+    st.set_cell("C2", rows[1], "22n")  # recalculation works on the shorter path too
+    assert st.ideal.path2[-1].c_nf == 22.0
 
 
 # --- Qt window ---------------------------------------------------------------------------
@@ -265,7 +292,7 @@ def test_window_flow(app: QApplication, messages: list[str]) -> None:
     w = BillWindow()
     w.show()
     button(w, "Design").click()
-    assert [e.text() for e in w.cells["R1"][:3]] == ["174456.75", "23106.61", "5170.43"]
+    assert [e.text() for e in w.cells["R1"][:3]] == ["174456.79", "23106.62", "5170.43"]
     assert w.headers["S1"].text() == "R1 E24 (Ω)"
     button(w, "E96").click()
     assert w.headers["S2"].text() == "R2 E96 (Ω)"
@@ -300,13 +327,30 @@ def test_mode_switch_carries_inputs(app: QApplication) -> None:
     classic.show()
     switcher.toggle()
     assert bill.isVisible() and not classic.isVisible()
-    assert (bill.state.f1, bill.state.c, bill.state.n) == ("300", "22", 4)
+    assert (bill.state.f1, bill.state.c, bill.state.sections) == ("300", "22", 8)
     assert bill.f1.text() == "300"
     bill.state.f2 = "3000"
     bill.classic_button.click()
     assert classic.isVisible() and classic.state.f2 == "3000"
     classic.bill_button.click()
     assert bill.isVisible() and not classic.isVisible()
+    bill.state.select_sections(7)  # odd total -> classic rounds up to 4 per path ...
+    classic.state.design()
+    switcher.toggle()
+    assert classic.state.n == 4 and classic.state.network is not None  # ... no clear needed
+    switcher.toggle()
+    assert bill.state.sections == 8
+
+
+def test_window_odd_sections(app: QApplication) -> None:
+    w = BillWindow()
+    button(w, "7").click()
+    button(w, "Design").click()
+    assert [e.isEnabled() for e in w.cells["R1"]] == [True] * 4 + [False] * 2
+    assert [b.isEnabled() for b in w.c_boxes["C2"]] == [True] * 3 + [False] * 3
+    assert [x.isEnabled() for x in w.row_labels] == [True] * 4 + [False] * 2
+    assert w.cells["R2"][2].text() and not w.cells["R2"][3].text()
+    assert w.summary.text().startswith("270–3600 Hz: max error 0.0386")
 
 
 def test_classic_bill_mode_button_fits(app: QApplication) -> None:
@@ -329,11 +373,11 @@ def test_window_capacitor_box_and_pairs(app: QApplication, messages: list[str]) 
     assert w.cells["C1"][0].text() == "10 nF"
     box.textActivated.emit("22 nF")  # what a pick from the list sends
     assert w.state.cells["C1"][0] == "22 nF"
-    assert w.cells["R1"][0].text() == "79298.52"
+    assert w.cells["R1"][0].text() == "79298.54"
     line = box.lineEdit()
     assert line is not None
     line.textEdited.emit("4.7n")  # typing
-    assert w.cells["R1"][0].text() == "371184.58"  # from the exact τ, not the rounded R
+    assert w.cells["R1"][0].text() == "371184.66"  # from the exact τ, not the rounded R
     button(w, "Pair (sum)").click()
     assert w.headers["S1"].text() == "R1 E24 pair (Ω)"
     assert w.cells["S1"][2].text() == "4700.00 + 470.00"

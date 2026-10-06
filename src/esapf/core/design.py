@@ -10,7 +10,7 @@ original J-Tek program uses; see docs/ORIGINAL_BEHAVIOUR.md §1.
 """
 
 from dataclasses import dataclass
-from math import cos, pi, sin, sqrt
+from math import cos, exp, isclose, pi, sin, sqrt
 
 # Series for the Jacobi nome q in terms of eps (Oppelt eq. 9): q = sum(a * eps**p).
 NOME_SERIES: tuple[tuple[int, int], ...] = (
@@ -73,6 +73,58 @@ def oppelt_design(
         tau1.append(num / den / sqrt(w1 * w2))
     tau2 = [1 / (w1 * w2 * t) for t in tau1]
     return Design(tuple(tau1), tuple(tau2))
+
+
+def _agm(a: float, b: float) -> float:
+    """Arithmetic-geometric mean (converges quadratically; the cap guards ulp cycling)."""
+    for _ in range(64):
+        if isclose(a, b, rel_tol=4e-16, abs_tol=0.0):
+            break
+        a, b = (a + b) / 2, sqrt(a * b)
+    return a
+
+
+def exact_nome(f1: float, f2: float) -> float:
+    """Jacobi nome q = exp(-pi K'/K) for modulus k = sqrt(1 - (F1/F2)^2), without the
+    truncated series of eq. 9: K = pi / (2 agm(1, k')), K' = pi / (2 agm(1, k))."""
+    kappa = min(f1, f2) / max(f1, f2)  # complementary modulus k'
+    if kappa >= 1:
+        return 0.0
+    k = sqrt((1 - kappa) * (1 + kappa))
+    return exp(-pi * _agm(1.0, kappa) / _agm(1.0, k))
+
+
+def elliptic_design(f1: float, f2: float, total: int) -> Design:
+    """Exact equiripple design for any total number of sections, odd or even (U8).
+
+    The N = total poles sit at k_j = (2j + 1) / (4N), j = 0 ... N-1 (for even N this is
+    Oppelt's eq. 10), and alternate between the paths: path 1 takes even j, path 2 odd j.
+    Pole j and pole N-1-j are reciprocal partners (tau_j tau_{N-1-j} = 1/(w1 w2)). For odd
+    N path 1 has one extra section, and the middle pole j = (N-1)/2 is its own partner,
+    tau = 1/sqrt(w1 w2); it is in path 1 if N = 1 mod 4, otherwise in path 2. The phase
+    error ripples equally with peaks of about 4 q^N radians (docs/FORMULAS.md §4.4).
+
+    q comes from the AGM and eq. 11's theta series is summed to convergence, so this is
+    also accurate for very wide bands where the original's truncation is not (§4.3).
+    For even N it agrees with oppelt_design(f1, f2, N // 2) to the latter's precision.
+    """
+    if total < 1:
+        raise ValueError("total must be >= 1")
+    if f1 <= 0 or f2 <= 0:
+        raise ValueError("frequencies must be > 0")
+    w1, w2 = 2 * pi * f1, 2 * pi * f2
+    q = exact_nome(f1, f2)
+    terms = 1
+    while terms < 64 and q ** (terms * (terms + 1)) > 1e-18:
+        terms += 1
+    taus = []
+    for j in range(total):
+        k = (2 * j + 1) / (4 * total)
+        num = sum(q ** (m * (m + 1)) * cos((2 * m + 1) * pi * k) for m in range(terms))
+        den = sum((-1) ** m * q ** (m * (m + 1)) * sin((2 * m + 1) * pi * k) for m in range(terms))
+        taus.append(num / den / sqrt(w1 * w2))
+    # Row order as in the original: path 1 f90 rising, path 2 f90 falling.
+    return Design(tuple(taus[0::2]), tuple(sorted(taus[1::2])))
 
 
 def f90(tau: float) -> float:

@@ -6,13 +6,15 @@ only renders it. Differences from the classic window: frequencies have 2 decimal
 resistances are in ohms with 2 decimals (U2), the graph's X axis range is settable (U3),
 each resistor is also shown as its nearest E-series value (U4) or the closest series pair
 (U7), the graph can be drawn from either the ideal or the E-series resistors (U5), and each
-capacitor is chosen from an E6 list or typed with a unit (U6).
+capacitor is chosen from an E6 list or typed with a unit (U6). The section count is a total
+of 2-12, odd or even (U8); for odd totals path 1 has one section more than path 2, and the
+design is core.elliptic_design (exact) rather than the original's truncated series.
 """
 
 import re
 from dataclasses import dataclass, field
 
-from esapf.core import Network, Section, band_stats, oppelt_design
+from esapf.core import Network, Section, band_stats, elliptic_design
 from esapf.core.eseries import SERIES, nearest, nearest_pair, values_between
 from esapf.core.legacy import MSG_COMPONENTS, InputError, parse_design_inputs, vb_val
 from esapf.core.metrics import PLOT_F_MAX, PLOT_F_MIN
@@ -23,6 +25,7 @@ COLUMNS = ("F1", "R1", "S1", "C1", "F2", "R2", "S2", "C2")  # S = standard (E-se
 SERIES_NAMES = tuple(SERIES)
 SOURCES = ("ideal", "series")
 RESISTOR_MODES = ("single", "pair")
+SECTION_CHOICES = tuple(range(2, 2 * MAX_SECTIONS + 1))  # total over both paths (U8)
 MSG_AXIS = "The X axis needs 0 < Min < Max (Hz)"
 OHM_PER_KOHM = 1000.0
 
@@ -71,7 +74,7 @@ class BillState:
     f1: str = "270"
     f2: str = "3600"
     c: str = "10"
-    n: int = 3
+    sections: int = 6  # total over both paths
     scale: str = "1"
     series: str = "E24"
     source: str = "ideal"
@@ -87,11 +90,16 @@ class BillState:
 
     # --- buttons ---------------------------------------------------------------------------
 
-    def select_n(self, n: int) -> None:
-        if isinstance(n, bool) or not 1 <= n <= MAX_SECTIONS:
-            raise ValueError(n)
-        self.n = n
+    def select_sections(self, total: int) -> None:
+        """U8: total number of sections, 2-12; clears the table and the graph."""
+        if isinstance(total, bool) or total not in SECTION_CHOICES:
+            raise ValueError(total)
+        self.sections = total
         self.clear()
+
+    def rows(self, path: int) -> int:
+        """Sections in path 1 or 2: path 1 takes the extra one when the total is odd."""
+        return (self.sections + 1) // 2 if path == 1 else self.sections // 2
 
     def select_scale(self, scale: str) -> None:
         if scale not in SCALES:
@@ -125,7 +133,8 @@ class BillState:
         c_nf = parse_c_nf(self.c)
         text = format_c(c_nf) if c_nf > 0 else self.c
         for col in ("C1", "C2"):
-            self.cells[col][: self.n] = [text] * self.n
+            n = self.rows(int(col[1]))
+            self.cells[col][:n] = [text] * n
 
     def design(self) -> None:
         """Design from F1, F2 and C. Raises InputError on invalid input."""
@@ -133,24 +142,26 @@ class BillState:
         # The C box takes units like the cells; repr() hands the value to the classic
         # validation so the messages and their order stay the same.
         inp = parse_design_inputs(self.f1, self.f2, repr(parse_c_nf(self.c)))
-        net = Network.from_design(oppelt_design(inp.f1, inp.f2, self.n), inp.c_nf)
-        for i, (a, b) in enumerate(zip(net.path1, net.path2, strict=True)):
-            self.cells["F1"][i], self.cells["R1"][i] = format_f(a.f90), format_ohm(_ohm(a.r_kohm))
-            self.cells["F2"][i], self.cells["R2"][i] = format_f(b.f90), format_ohm(_ohm(b.r_kohm))
+        net = Network.from_design(elliptic_design(inp.f1, inp.f2, self.sections), inp.c_nf)
+        for p, path in enumerate((net.path1, net.path2), start=1):
+            self.cells[f"F{p}"][: len(path)] = [format_f(s.f90) for s in path]
+            self.cells[f"R{p}"][: len(path)] = [format_ohm(_ohm(s.r_kohm)) for s in path]
         self.ideal = net
         self.design_tau = (net.tau1, net.tau2)
         self._update_standard()
 
     def phase(self) -> None:
         """Recompute F, the E-series values and the graph from the R (Ω) and C cells."""
-        rows = range(self.n)
-        r1, r2 = ([vb_val(self.cells[c][i]) for i in rows] for c in ("R1", "R2"))
-        c1, c2 = ([parse_c_nf(self.cells[c][i]) for i in rows] for c in ("C1", "C2"))
+        n1, n2 = self.rows(1), self.rows(2)
+        r1 = [vb_val(t) for t in self.cells["R1"][:n1]]
+        r2 = [vb_val(t) for t in self.cells["R2"][:n2]]
+        c1 = [parse_c_nf(t) for t in self.cells["C1"][:n1]]
+        c2 = [parse_c_nf(t) for t in self.cells["C2"][:n2]]
         if any(v <= 0 for v in r1 + r2 + c1 + c2):
             raise InputError(MSG_COMPONENTS)
         net = Network.from_values(_kohm(r1), c1, _kohm(r2), c2)
-        for i, (a, b) in enumerate(zip(net.path1, net.path2, strict=True)):
-            self.cells["F1"][i], self.cells["F2"][i] = format_f(a.f90), format_f(b.f90)
+        for p, path in enumerate((net.path1, net.path2), start=1):
+            self.cells[f"F{p}"][: len(path)] = [format_f(s.f90) for s in path]
         self.ideal = net
         self._update_standard()
 
@@ -249,6 +260,7 @@ def _kohm(r_ohm: list[float]) -> list[float]:
 __all__ = [
     "CAPACITOR_CHOICES",
     "RESISTOR_MODES",
+    "SECTION_CHOICES",
     "SERIES_NAMES",
     "SOURCES",
     "BillState",

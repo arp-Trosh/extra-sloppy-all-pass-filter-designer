@@ -16,11 +16,19 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
-from esapf.bill import CAPACITOR_CHOICES, RESISTOR_MODES, SERIES_NAMES, BillState, InputError
+from esapf.bill import (
+    CAPACITOR_CHOICES,
+    RESISTOR_MODES,
+    SECTION_CHOICES,
+    SERIES_NAMES,
+    BillState,
+    InputError,
+)
 from esapf.form import MAX_SECTIONS, SCALES
 from esapf.gui.bill_graph import BillGraph
 
@@ -28,6 +36,7 @@ TITLE = "Extra Sloppy All Pass Filter Designer: Bill Mode"
 SOURCE_LABELS = {"ideal": "Perfect R", "series": "E-series R"}
 RESISTOR_LABELS = {"single": "Single", "pair": "Pair (sum)"}
 READ_ONLY = ("F1", "S1", "F2", "S2")
+INITIAL_SIZE = (1100, 720)  # fits a 1366 x 768 laptop screen; the window is resizable
 UNITS = {"F": "Hz", "R": "Ω"}
 TIP_C_CELL = (
     "Pick an E6 value or type one: a bare number is nF; p, n and µ (or u) are also accepted."
@@ -72,10 +81,12 @@ class BillWindow(QWidget):
             g.addWidget(QLabel(unit), row, 2)
 
         sections = QHBoxLayout()
-        sections.addWidget(QLabel("Sections per path:"))
-        self.n_group, self.n_buttons = self._choice(
-            sections, [str(n) for n in range(1, MAX_SECTIONS + 1)],
-            lambda i: self._run(lambda: self.state.select_n(i + 1)),
+        total_label = QLabel("Sections:")
+        total_label.setToolTip("Total over both paths; for odd totals path 1 has one more")
+        sections.addWidget(total_label)
+        self.sections_group, self.sections_buttons = self._choice(
+            sections, [str(n) for n in SECTION_CHOICES],
+            lambda i: self._run(lambda: self.state.select_sections(SECTION_CHOICES[i])),
         )  # fmt: skip
         g.addLayout(sections, 3, 0, 1, 3)
 
@@ -181,6 +192,7 @@ class BillWindow(QWidget):
         self.summary = QLabel()
         root.addWidget(self.summary)
 
+        self.resize(INITIAL_SIZE[0], max(INITIAL_SIZE[1], self.minimumSizeHint().height()))
         self.refresh()
 
     # --- construction helpers --------------------------------------------------------------
@@ -202,6 +214,10 @@ class BillWindow(QWidget):
         for i, text in enumerate(labels):
             b = QPushButton(text)
             b.setCheckable(True)
+            # Let rows of short labels (eleven section counts) shrink below the style's
+            # default button width so the window fits laptop screens.
+            b.setMinimumWidth(b.fontMetrics().horizontalAdvance(text) + 16)
+            b.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
             b.clicked.connect(partial(lambda i, _checked=False: on_select(i), i))
             group.addButton(b)
             row.addWidget(b)
@@ -262,7 +278,7 @@ class BillWindow(QWidget):
             header.setText(header_text(col, st.series, st.resistors))
         for col, widgets in self.cells.items():
             for row, w in enumerate(widgets):
-                active = row < st.n
+                active = row < st.rows(int(col[1]))
                 if w.text() != st.cells[col][row]:
                     w.setText(st.cells[col][row])
                 boxes = self.c_boxes.get(col)
@@ -271,8 +287,8 @@ class BillWindow(QWidget):
                     w.setReadOnly(col in READ_ONLY)
                     w.style().polish(w)  # re-apply the readOnly style rule
         for row, row_label in enumerate(self.row_labels):
-            row_label.setEnabled(row < st.n)
-        self.n_buttons[st.n - 1].setChecked(True)
+            row_label.setEnabled(row < st.rows(1))
+        self.sections_buttons[SECTION_CHOICES.index(st.sections)].setChecked(True)
         self.scale_buttons[SCALES.index(st.scale)].setChecked(True)
         self.series_buttons[SERIES_NAMES.index(st.series)].setChecked(True)
         self.source_buttons[list(SOURCE_LABELS).index(st.source)].setChecked(True)

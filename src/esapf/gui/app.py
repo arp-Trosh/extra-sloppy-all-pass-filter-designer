@@ -19,7 +19,7 @@ from esapf.gui.main_window import MainWindow
 
 # Default design (270-3600 Hz, n = 3, C = 10 nF) as displayed by the original program.
 SELF_TEST_EXPECTED = ["174.456750", "23.106614", "5.170433"]
-BILL_SELF_TEST_EXPECTED = ["174456.75", "23106.61", "5170.43"]
+BILL_SELF_TEST_EXPECTED = ["174456.79", "23106.62", "5170.43"]  # exact design (U8)
 SWITCH_KEY = "Ctrl+B"
 
 
@@ -39,7 +39,8 @@ def self_test(window: MainWindow, bill: BillWindow) -> int:
 
 
 class ModeSwitcher:
-    """Shows one window at a time and carries F1, F2, C and n over on each switch."""
+    """Shows one window at a time and carries F1, F2, C and the section count over on each
+    switch. Classic n per path <-> Bill Mode total 2n; an odd total rounds up to n."""
 
     def __init__(self, classic: MainWindow, bill: BillWindow) -> None:
         self.classic, self.bill = classic, bill
@@ -57,8 +58,11 @@ class ModeSwitcher:
     def _switch(self, source: MainWindow | BillWindow, target: MainWindow | BillWindow) -> None:
         src, dst = source.state, target.state
         dst.f1, dst.f2, dst.c = src.f1, src.f2, src.c
-        if dst.n != src.n:
-            dst.select_n(src.n)
+        classic, bill = self.classic.state, self.bill.state
+        if dst is bill and bill.sections != 2 * classic.n:
+            bill.select_sections(2 * classic.n)
+        elif dst is classic and classic.n != bill.rows(1):
+            classic.select_n(bill.rows(1))
         target.refresh()
         target.move(source.pos())
         source.hide()

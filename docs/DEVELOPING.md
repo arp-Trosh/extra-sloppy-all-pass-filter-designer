@@ -19,6 +19,7 @@ uv run esapf design 270 3600 -n 3 -c 10      # the CLI
 src/esapf/
   core/            pure maths (NumPy only). NEVER imports Qt; a test enforces this.
     design.py        Oppelt design → time constants        (docs/FORMULAS.md §4)
+                     elliptic_design: exact, any total N (§4.4, Bill Mode)
     allpass.py       phase of chains, phase error          (§1–2)
     metrics.py       suppression, band statistics           (§3)
     network.py       Section / Network: R [kΩ], C [nF] ↔ τ [s]
