@@ -99,7 +99,9 @@ to 6 by its layout (6 table rows and 6 buttons), so a larger n needs a new view.
 1. Bump `__version__` in `src/esapf/__init__.py`, which is the only place the version lives.
 2. Commit, then `git tag vX.Y.Z && git push --tags`.
 3. CI tests, builds and self-tests the executables, then publishes a GitHub Release with
-   `esapf-gui-X.Y.Z-windows-x64.exe` and `…-linux-x86_64`.
+   `esapf-gui-X.Y.Z-windows-x64.exe` and `…-linux-x86_64`. The release text comes from
+   `.github/release-notes.md`. Tags with a suffix (`v0.2.0-rc1`) become pre-releases, and the
+   matching PEP 440 version is `0.2.0rc1`.
 4. Before announcing, run `docs/WINDOWS_TEST.md` on real Windows.
 
 **Local build:** `uv run --group build packaging/build.py`, then `dist/esapf-gui --self-test`.
