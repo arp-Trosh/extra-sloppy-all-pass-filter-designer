@@ -17,7 +17,8 @@ No code from the original is used.
 ## Bill Mode
 
 Besides the classic window, which copies the 2002 original, there is a practical window
-called **Bill Mode**. Press **Ctrl+B** to switch between them (F1, F2, C and the section
+called **Bill Mode**. Click **Bill Mode** (or **Classic Mode** to go back), or press **Ctrl+B**,
+to switch between them (F1, F2, C and the section
 count carry over), or start with `esapf-gui --bill`. Bill Mode shows:
 
 - 90° frequencies to 2 decimal places and resistances in ohms (to 0.01 Ω);

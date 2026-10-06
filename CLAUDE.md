@@ -18,7 +18,8 @@ PySide6 and NumPy, managed with uv.
   change the defaults; add new algorithms as new functions.
 - Button behaviour lives in `src/esapf/form.py` (`FormState`) and, for Bill Mode,
   `src/esapf/bill.py` (`BillState`), not in widgets.
-- The classic window (`gui/layout.py`, `gui/graph.py`) must keep matching the original.
+- The classic window (`gui/layout.py`, `gui/graph.py`) must keep matching the original. The
+  one deliberate exception is the Bill Mode button, which takes room from a shortened Design.
   `tests/test_vs_original.py`, `test_form_replay.py` and `test_gui.py` check this against
   fixtures captured from the real program. New features go in **Bill Mode**
   (`gui/bill_window.py`, Ctrl+B or `esapf-gui --bill`; ROADMAP.md §0), not the classic window.

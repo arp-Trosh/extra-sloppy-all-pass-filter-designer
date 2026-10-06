@@ -45,8 +45,8 @@ class ModeSwitcher:
         self.classic, self.bill = classic, bill
         for w in (classic, bill):
             QShortcut(QKeySequence(SWITCH_KEY), w).activated.connect(self.toggle)
+        classic.bill_button.clicked.connect(self.toggle)
         bill.classic_button.clicked.connect(self.toggle)
-        classic.setToolTip(f"{SWITCH_KEY}: switch to Bill Mode")
 
     def toggle(self) -> None:
         if self.classic.isVisible():

@@ -200,3 +200,16 @@ def test_mode_switch_carries_inputs(app: QApplication) -> None:
     bill.state.f2 = "3000"
     bill.classic_button.click()
     assert classic.isVisible() and classic.state.f2 == "3000"
+    classic.bill_button.click()
+    assert bill.isVisible() and not classic.isVisible()
+
+
+def test_classic_bill_mode_button_fits(app: QApplication) -> None:
+    from esapf.gui import layout as L
+
+    w = MainWindow()
+    b = w.bill_button
+    assert b.geometry().getRect() == L.BILL_MODE_BUTTON
+    assert b.fontMetrics().horizontalAdvance(b.text()) <= b.width() - 4  # inside the border
+    design = next(x for x in w.findChildren(QPushButton) if x.text() == "Design")
+    assert design.geometry().right() < b.geometry().left()

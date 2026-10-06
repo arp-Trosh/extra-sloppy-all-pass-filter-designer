@@ -101,6 +101,11 @@ class MainWindow(QWidget):
         self._button(L.PHASE_BUTTON, "Phase", L.TIP_PHASE, lambda: self._run(self.state.phase))
         self._button(L.CLEAR_BUTTON, "Clear", L.TIP_CLEAR, lambda: self._run(self.state.clear))
         self._button(L.EXIT_BUTTON, "Exit", L.TIP_EXIT, self._exit)
+        # Not in the original; esapf.gui.app.ModeSwitcher connects it.
+        self.bill_button = QPushButton("Bill Mode", self)
+        self.bill_button.setGeometry(*L.BILL_MODE_BUTTON)
+        self.bill_button.setFont(self._large)
+        self.bill_button.setToolTip(L.TIP_BILL_MODE)
 
         self.graph = GraphWidget(self)
         self.graph.move(L.GRAPH[0], L.GRAPH[1])

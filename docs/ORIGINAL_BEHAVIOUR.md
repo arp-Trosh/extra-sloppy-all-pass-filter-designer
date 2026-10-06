@@ -97,6 +97,7 @@ border. Coordinates below are window pixels.
 | **Phase** | Validates the table. Recomputes the F columns from R·C and redraws. Does not change R or C. On error, the table and graph are left as they were. |
 | **Clear** | Empties all table cells and resets the graph to the empty grid. F1, F2, C, n and scale are kept. |
 | **Scale buttons** | Change the ± labels and redraw the blue curve. The selection is shown in yellow and persists across Design. |
+| *(Bill Mode)* | **Not in the original.** Our replica adds it at (440, 8, 73, 25) and shortens Design from 137 to 57 px to make room; it switches to Bill Mode. |
 | **Exit** | Closes the program. The author's page says an about box with the old e-mail address is shown on exit (not captured; not needed). |
 
 ## 6. Validation (modal MsgBox, title `ERROR`)

@@ -35,7 +35,10 @@ F1_BOX: Rect = (56, 8, 57, 24)
 F2_BOX: Rect = (56, 40, 57, 24)
 C_BOX: Rect = (176, 40, 41, 24)
 N_BUTTONS: list[Rect] = [(176 + 32 * i, 8, 33, 25) for i in range(6)]
-DESIGN_BUTTON: Rect = (376, 8, 137, 25)
+# The original Design button is (376, 8, 137, 25); it is shortened to make room for the
+# Bill Mode button, the only deliberate change to the original layout (ROADMAP.md §0).
+DESIGN_BUTTON: Rect = (376, 8, 57, 25)
+BILL_MODE_BUTTON: Rect = (440, 8, 73, 25)
 RESET_C_BUTTON: Rect = (224, 40, 73, 25)
 PHASE_BUTTON: Rect = (304, 40, 65, 25)
 CLEAR_BUTTON: Rect = (376, 40, 65, 25)
@@ -105,6 +108,7 @@ TIP_RESET_C = "Sets all capacitor values to default"
 TIP_PHASE = "Recalculates and displays graph after any values have been changed manually."
 TIP_CLEAR = "Clears graph and all calculated values."
 TIP_EXIT = "Quit the program."
+TIP_BILL_MODE = "Switch to Bill Mode, the practical window (Ctrl+B)."
 TIP_GRAPH = "Phase Error Relative to 90 Degrees"
 
 

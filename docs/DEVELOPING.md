@@ -47,7 +47,8 @@ docs/              FORMULAS, ORIGINAL_BEHAVIOUR (the spec), WINDOWS_TEST, this f
    replayed headlessly.
 3. The classic window must keep matching the original. `tests/test_vs_original.py`,
    `test_form_replay.py` and `test_gui.py` fail if it drifts. New features go in Bill Mode
-   (ROADMAP.md §0) or in other new windows or dialogs, never in the classic layout.
+   (ROADMAP.md §0) or in other new windows or dialogs, never in the classic layout. The only
+   exception is the classic window's Bill Mode button (Design was shortened to fit it).
 4. Units at the boundaries: the classic UI uses kΩ, nF and Hz; Bill Mode shows Ω (`bill.py`
    converts); `core` uses seconds and hertz.
    `Section` converts between them.
