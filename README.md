@@ -10,8 +10,15 @@ re-implementation**. It is built from the published mathematics (R. Oppelt, DB2N
 *VHF Communications* 2/1987) and checked against the original program running under Wine.
 No code from the original is used.
 
-> **Status:** Phases 0–2 complete. The maths core and CLI reproduce the original exactly
-> ([docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md)). The GUI comes in Phase 3. See [ROADMAP.md](ROADMAP.md).
+> **Status:** Phases 0–3 complete. The maths, the CLI and the GUI (a replica of the 2002 window)
+> reproduce the original ([docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md)).
+> Packaging for Windows and Linux comes in Phase 4. See [ROADMAP.md](ROADMAP.md).
+
+## Running
+
+```sh
+uv run esapf-gui                     # the GUI (or: python -m esapf.gui)
+```
 
 ## Command line
 

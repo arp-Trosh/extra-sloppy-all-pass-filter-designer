@@ -5,7 +5,7 @@ A GPL-3.0 clean-room re-implementation of the J-Tek *All Pass Filter Designer* (
 **Original program page:** <https://www.gj3rax.com/apf.htm>
 **Repository:** <https://github.com/arp-Trosh/extra-sloppy-all-pass-filter-designer>
 **Licence:** GPL-3.0-only
-**Status:** Phases 0–2 complete (2026-10-06). Phases 3–5 are next. The Phase 6 extensions are deferred (§7.1).
+**Status:** Phases 0–3 complete (2026-10-06). Phases 4–5 are next. The Phase 6 extensions are deferred (§7.1).
 
 ---
 
@@ -180,7 +180,7 @@ We use this only if a black-box result can't be explained (for example an undocu
 
 **Toolkit:**
 - PySide6 (official Qt binding, LGPL) for the UI.
-- pyqtgraph for fast interactive log-axis plots. Matplotlib stays an option for exporting publication-quality images.
+- ~~pyqtgraph~~ **Changed in Phase 3:** the graph is a small custom `QPainter` widget. It reproduces the original's PictureBox pixel for pixel (≥ 97.5 % identical in tests), which pyqtgraph could not do, and dropping pyqtgraph keeps the Windows build smaller. pyqtgraph remains a good option for the modernised UI (6.14). Matplotlib stays an option for exporting publication-quality images.
 
 **Tooling:**
 - `uv` for environments and lock files.
@@ -232,11 +232,11 @@ Keeping `core/` separate from the GUI means that every Phase 6 extension (§7.1)
 
 | Phase | Work | Deliverable / exit criterion |
 |---|---|---|
-| **0. Setup** ✅ | Git and GitHub repo (private), GPL-3.0. The original runs under Wine 11.19 (`tools/wine.sh original`). VBDec 8.4.24 runs under Wine and parses `apf.exe` (`tools/wine.sh vbdec`). Python skeleton: `uv`, `ruff`, `mypy --strict`, `pytest`, PySide6 6.11 and pyqtgraph. | ✅ Done 2026-10-06; see §7.2. |
+| **0. Setup** ✅ | Git and GitHub repo (private), GPL-3.0. The original runs under Wine 11.19 (`tools/wine.sh original`). VBDec 8.4.24 runs under Wine and parses `apf.exe` (`tools/wine.sh vbdec`). Python skeleton: `uv`, `ruff`, `mypy --strict`, `pytest`, PySide6 6.11 (and pyqtgraph, later dropped in Phase 3). | ✅ Done 2026-10-06; see §7.2. |
 | **1. Oracle capture** ✅ | 44 reference cases captured automatically on Xvfb (§4.2). The open points in §3.5 are settled. | ✅ Done 2026-10-06: `tests/fixtures/original/`, `docs/ORIGINAL_BEHAVIOUR.md`. Decompilation was **not needed**, so Phase 2b is expected to be skipped. |
 | **2. Core maths** ✅ | `core/` modules and CLI. | ✅ Done 2026-10-06. All fixtures match the original to the displayed precision, and the article example matches (§7.4). |
 | **2b. (only if needed)** ⏭ | P-code disassembly of the functions that don't match. | **Skipped**: there were no unexplained differences. |
-| **3. GUI parity** | Qt window that replicates the original layout and workflow: Design, Phase, Reset C, Clear, n = 1–6, scale buttons, tooltips, validation messages. | Side-by-side screenshots look equivalent, and a user can repeat the three web examples. |
+| **3. GUI parity** ✅ | Qt window that replicates the original layout and workflow: Design, Phase, Reset C, Clear, n = 1–6, scale buttons, tooltips, validation messages. | ✅ Done 2026-10-06 (§7.5). Side-by-side screenshots are equivalent, and all 44 captured cases, including the three web examples, replay through the real widgets. |
 | **4. Packaging & CI** | GitHub Actions: tests, then PyInstaller on Windows and Linux. Release artefacts are attached to GitHub Releases. | Working `.exe` checked on Win10/11 (by you or a VM) plus an AppImage or Arch run. |
 | **5. Docs** | README, `FORMULAS.md` and a final work summary with the formulas. | The deliverable for goal #2. |
 | **6. Extensions** | **Deferred.** Chosen from the backlog in §7.1 after Phases 1–5 are complete. | — |
@@ -298,6 +298,39 @@ Rough effort: Phases 0–5 take a few working sessions. Phase 1 needs the most h
 - Design identities: reciprocal pairs, symmetry, equiripple error, and error decreasing as n grows.
 - The CLI.
 
+### 7.5 Phase 3 results (2026-10-06)
+
+**Run it:** `uv run esapf-gui` or `python -m esapf.gui`.
+
+**Architecture:**
+- `esapf/form.py` (`FormState`, no Qt) holds every field as displayed text and implements the button semantics from `docs/ORIGINAL_BEHAVIOUR.md` §5–6.
+- `gui/main_window.py` only renders that state and forwards events.
+- `gui/layout.py` holds the original geometry, colours, fonts and the **verbatim tooltips**, which were recovered from the exe's strings.
+- `gui/graph.py` is the PictureBox replica.
+
+**Fidelity:**
+- **Layout:** the 520 × 474 window uses the original control rectangles taken from the Win32 dump. Static texts sit at their measured positions, using a bold sans font matched to the original's text widths (MS Sans Serif on Windows, Liberation Sans/Arial elsewhere).
+- **Rows:** inactive rows are pale yellow and read-only, the F columns are read-only, and the row labels "(1)…(n)" follow n.
+- **Graph:** 98–99 % of pixels are identical to the original's screenshots (the test threshold is 97.5 %). The remaining difference is how the 2-px curves are rasterised (Qt vs Windows GDI), plus the height of infinitely sharp suppression spikes, which depends on the sampling grid.
+
+**Deliberate deviations:**
+- **Window title:** "Extra Sloppy All Pass Filter Designer".
+- **Exit:** shows an About box before quitting, as the original did. It credits GJ3RAX and DB2NP and carries the GPL-3.0 notice, instead of the author's dead e-mail address.
+
+**Tests: 305 passing in about 1.6 s.**
+- `test_form_replay.py`: all 44 cases through `FormState`.
+- `test_gui.py`:
+  - All 44 cases through the **real widgets**, with key presses into the fields and button clicks, comparing every displayed field and every error dialog.
+  - Graph pixel comparison for 35 captured graphs.
+  - Read-only rules and tooltips.
+- `mypy --strict` now covers all of `src/`.
+
+**Manual check:**
+- The real X11 (xcb) build ran on a private Xvfb display. xdotool mouse clicks covered n = 5, Design, scale 0.2, an invalid-F1 error dialog, and Exit → About → quit.
+- **A bug was caught and fixed:** `clicked(bool)` was overriding the lambda defaults of the n and scale buttons.
+
+**Tool:** `uv run tools/render_gui.py <case> out.png --diff <original_form.png> diff.png` renders the window after replaying a case and diffs it against the original's screenshot.
+
 ### 7.1 Phase 6 backlog (to be decided after Phases 1–5)
 
 Nothing here is scheduled. Once Phase 5 is done, each item will be marked **Accept**, **Reject** or **Later** and given a priority. Effort: S is under ½ session, M is about 1 session, L is several sessions.
@@ -332,7 +365,7 @@ Nothing here is scheduled. Once Phase 5 is done, each item will be marked **Acce
 | A GUI-automation oracle under Wine is flaky | The case count is small, so capture by hand plus screenshots is acceptable. |
 | PyInstaller binary is large or flagged by antivirus | Acceptable for a hobby tool. Nuitka is the alternative if it becomes a problem. |
 | Licence or attribution (the original was freeware with no licence stated) | Clean-room GPL-3.0 re-implementation of published maths, with no code copied. Third-party files are not redistributed (§6). Credit GJ3RAX and DB2NP in the About box and README. |
-| GPL compatibility of dependencies | PySide6 (LGPL-3), pyqtgraph (MIT), NumPy and SciPy (BSD) are all GPL-3.0 compatible. |
+| GPL compatibility of dependencies | PySide6 (LGPL-3), NumPy (BSD) and Pillow (dev only, HPND) are all GPL-3.0 compatible. |
 
 ---
 
@@ -341,7 +374,7 @@ Nothing here is scheduled. Once Phase 5 is done, each item will be marked **Acce
 | # | Decision | Status |
 |---|---|---|
 | 1 | Method: black box plus the literature; P-code decompilation only as a fallback | ✅ Approved 2026-10-06 |
-| 2 | Stack: Python + PySide6 + pyqtgraph | ✅ Approved 2026-10-06 |
+| 2 | Stack: Python + PySide6 (pyqtgraph replaced by a custom QPainter graph in Phase 3, see §5) | ✅ Approved 2026-10-06 |
 | 3 | Licence: GPL-3.0 | ✅ 2026-10-06 |
 | 4 | Name: *Extra Sloppy All Pass Filter Designer* (repo `extra-sloppy-all-pass-filter-designer`, package `esapf`) | ✅ 2026-10-06 |
 | 5 | Hosting: GitHub repository, **kept private until the software is finished** | ✅ Created 2026-10-06 |

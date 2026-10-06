@@ -119,3 +119,18 @@ The window is a fixed 520 × 474 client area at 800×600-era sizing, with a ligh
 background. The exact control rectangles are listed in `tools/oracle/job_runner.py` and the
 `dump` output of `tools/oracle/w32.py`. Reference screenshots:
 `form_startup_1_form.png` and `form_kk7b_2_form.png`.
+
+## 8. Tooltips (verbatim strings from the executable)
+
+| Control | Tooltip |
+|---|---|
+| F1 / F2 | `Change lower frequency of range.` / `Change upper frequency of range.` |
+| C (nF) | `Set default capacitor value in nF.` |
+| Filters 1–6 | `One filter in each path.` … `Six filters in each path.` |
+| Design | `Calculate values and display graph` |
+| Reset C | `Sets all capacitor values to default` |
+| Phase | `Recalculates and displays graph after any values have been changed manually.` |
+| Clear | `Clears graph and all calculated values.` |
+| Exit | `Quit the program.` |
+| Graph | `Phase Error Relative to 90 Degrees` |
+| Scale buttons | `Set phase graph scale to +/- 10 degrees.` (10, 5, 2) / `… +/- 1 degree.` (1, 0.5, 0.2, 0.1) |

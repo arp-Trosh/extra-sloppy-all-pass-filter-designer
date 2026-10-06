@@ -10,6 +10,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
+from esapf.core.legacy import InputError
+from esapf.form import FormState
+
 FIXTURES = Path(__file__).parent / "fixtures" / "original"
 COLUMNS = ("F1", "R1", "C1", "F2", "R2", "C2")
 
@@ -47,3 +50,30 @@ def reads() -> Iterator[Read]:
             png = FIXTURES / step["graph_png"] if "graph_png" in step else None
             for r in step["reads"]:
                 yield Read(case["id"], i, r["label"], r["values"], step["ops"], msgs, png)
+
+
+def apply(st: FormState, op: list[str]) -> str | None:
+    """Apply one captured op; return the message box text it raised, if any."""
+    kind, *args = op
+    if kind == "set":
+        name, text = args
+        if name in ("F1", "F2"):
+            setattr(st, name.lower(), text)
+        elif name == "C":
+            st.c = text
+        else:
+            col, row = name.split("_")
+            st.set_cell(col, int(row), text)
+    elif kind == "click":
+        button = args[0]
+        try:
+            if button.startswith("N"):
+                st.select_n(int(button[1:]))
+            elif button.startswith("S"):
+                st.select_scale(button[1:])
+            else:
+                {"Design": st.design, "Phase": st.phase, "ResetC": st.reset_c,
+                 "Clear": st.clear}[button]()  # fmt: skip
+        except InputError as e:
+            return str(e)
+    return None

@@ -9,11 +9,13 @@ requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.0",
     "pyside6>=6.8",
-    "pyqtgraph>=0.13.7",
 ]
 
 [project.scripts]
 esapf = "esapf.cli:main"
+
+[project.gui-scripts]
+esapf-gui = "esapf.gui.app:main"
 
 [dependency-groups]
 dev = [
@@ -38,7 +40,7 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
 
 [tool.mypy]
-files = ["src/esapf/core"]
+files = ["src/esapf"]
 strict = true
 
 [tool.pytest.ini_options]
