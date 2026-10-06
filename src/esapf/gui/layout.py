@@ -21,8 +21,10 @@ SHADOW_OUTER = (166, 166, 166)
 SHADOW_INNER = (106, 106, 106)
 LIGHT_INNER = (227, 227, 227)
 
-FONT_FAMILIES = ["MS Sans Serif", "Microsoft Sans Serif", "Arial", "Liberation Sans",
-                 "Helvetica", "DejaVu Sans"]  # fmt: skip
+# TrueType fonts only: "MS Sans Serif" (the original's font) is a bitmap font on Windows,
+# which Qt renders without bold and with wrong metrics. Microsoft Sans Serif is its
+# TrueType successor (shipped with Windows 10/11); Liberation Sans is metric-compatible Arial.
+FONT_FAMILIES = ["Microsoft Sans Serif", "Arial", "Liberation Sans", "Helvetica", "DejaVu Sans"]
 FONT_LARGE_PX = 14  # ~10 pt bold MS Sans Serif: labels, inputs, buttons (width-matched)
 FONT_SMALL_PX = 12  # ~8 pt bold: table, headers, axis labels (width-matched)
 

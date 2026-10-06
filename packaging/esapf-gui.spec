@@ -22,9 +22,10 @@ DROP = re.compile(
     r"|plugins/imageformats/(?!(lib)?qico)"
     r"|plugins/iconengines/"
 )
-# Libraries only reachable through the dropped plugins.
+# Libraries only reachable through the dropped plugins, plus fontconfig: an old bundled
+# fontconfig cannot parse newer distributions' /etc/fonts, so use the host's (always present).
 DROP_LIBS = re.compile(r"(Qt6(Quick|Qml|Pdf|VirtualKeyboard|Network|Svg)\w*\.(so|dll))"
-                       r"|^lib(gtk-3|gdk-3|cairo|glycin|icu\w+\.so\.7[89])")
+                       r"|^lib(gtk-3|gdk-3|cairo|glycin|icu\w+\.so\.7[89]|fontconfig\.so)")
 
 a = Analysis(  # noqa: F821
     [str(ROOT / "packaging" / "launcher.py")],
