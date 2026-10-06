@@ -1,6 +1,6 @@
 [project]
 name = "extra-sloppy-apf"
-version = "0.1.0.dev0"
+dynamic = ["version"]
 description = "Extra Sloppy All Pass Filter Designer: 90° all-pass phase networks for phasing SSB"
 readme = "README.md"
 license = "GPL-3.0-only"
@@ -23,6 +23,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "pillow>=12.3.0",
+    "mpmath>=1.4.1",
 ]
 build = [
     "pyinstaller>=6.10",
@@ -31,6 +32,9 @@ build = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/esapf/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/esapf"]

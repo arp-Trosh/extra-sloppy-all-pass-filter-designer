@@ -5,7 +5,7 @@ A GPL-3.0 clean-room re-implementation of the J-Tek *All Pass Filter Designer* (
 **Original program page:** <https://www.gj3rax.com/apf.htm>
 **Repository:** <https://github.com/arp-Trosh/extra-sloppy-all-pass-filter-designer>
 **Licence:** GPL-3.0-only
-**Status:** Phases 0–4 complete (2026-10-06); the Windows hardware test is pending. Phase 5 is next. The Phase 6 extensions are deferred (§7.1).
+**Status:** Phases 0–5 complete (2026-10-06). The Windows hardware test is pending, and Phase 6 is to be decided (§7.1). The final summary is in `docs/SUMMARY.md`. The Phase 6 extensions are deferred (§7.1).
 
 ---
 
@@ -238,7 +238,7 @@ Keeping `core/` separate from the GUI means that every Phase 6 extension (§7.1)
 | **2b. (only if needed)** ⏭ | P-code disassembly of the functions that don't match. | **Skipped**: there were no unexplained differences. |
 | **3. GUI parity** ✅ | Qt window that replicates the original layout and workflow: Design, Phase, Reset C, Clear, n = 1–6, scale buttons, tooltips, validation messages. | ✅ Done 2026-10-06 (§7.5). Side-by-side screenshots are equivalent, and all 44 captured cases, including the three web examples, replay through the real widgets. |
 | **4. Packaging & CI** ✅ | GitHub Actions: tests, then PyInstaller on Windows and Linux. Release artefacts are attached to GitHub Releases. | ✅ Done 2026-10-06 (§7.6). CI is green, and both executables pass their self-test on CI and on Arch (Linux natively, Windows under Wine). ☐ **Real Win10/11 test pending** (a friend will use `docs/WINDOWS_TEST.md`). |
-| **5. Docs** | README, `FORMULAS.md` and a final work summary with the formulas. | The deliverable for goal #2. |
+| **5. Docs** ✅ | README, `FORMULAS.md` and a final work summary with the formulas. | ✅ Done 2026-10-06: `docs/SUMMARY.md`, `docs/FORMULAS.md`, `docs/DEVELOPING.md` and `CLAUDE.md`. New findings: the Jacobi closed form, the ripple formula ε ≈ 4q^(2n), and the original's suboptimal design for very wide bands. All are locked in by `tests/test_elliptic.py`. |
 | **6. Extensions** | **Deferred.** Chosen from the backlog in §7.1 after Phases 1–5 are complete. | — |
 
 Rough effort: Phases 0–5 take a few working sessions. Phase 1 needs the most hands-on time, because it means driving the GUI.
@@ -359,6 +359,23 @@ Jobs and the self-test step have timeouts.
 3. The bundled fontconfig from Ubuntu 22.04 produced warnings on newer distributions.
 
 **Pending:** a test on real Windows 10/11 hardware, using `docs/WINDOWS_TEST.md` (12 checks).
+
+### 7.7 Phase 5 results (2026-10-06)
+
+**Documents:**
+- `docs/FORMULAS.md`: every formula, each marked by how it was verified: [oracle] matches the original, [article] matches Oppelt's example, [proven] matches exact elliptic functions.
+- `docs/SUMMARY.md`: the final summary.
+- `docs/DEVELOPING.md`: layering rules, test map, recipes for extensions, and the release procedure.
+- `CLAUDE.md`: a short guide for AI assistants.
+
+**New findings, all tested:**
+- Oppelt's eq. 11 is τ1_v = cs(2K·k_v, k)/ω1, with q the Jacobi nome for k = √(1−κ²).
+- The ripple is ε_max ≈ 4q^(2n).
+- The original's 5/4-term truncation is within 0.04 % of optimal for F2/F1 ≤ 20, but up to 5–12× worse for 10 Hz–20/100 kHz. This is the motivation for item 6.2.
+
+**Housekeeping:**
+- The version now lives only in `src/esapf/__init__.py`.
+- mpmath was added as a dev-only dependency for the elliptic reference tests.
 
 ### 7.1 Phase 6 backlog (to be decided after Phases 1–5)
 

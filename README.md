@@ -10,9 +10,20 @@ re-implementation**. It is built from the published mathematics (R. Oppelt, DB2N
 *VHF Communications* 2/1987) and checked against the original program running under Wine.
 No code from the original is used.
 
-> **Status:** Phases 0–3 complete. The maths, the CLI and the GUI (a replica of the 2002 window)
-> reproduce the original ([docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md)).
-> Packaging for Windows and Linux comes in Phase 4. See [ROADMAP.md](ROADMAP.md).
+> **Status:** Phases 0–5 complete. It runs on Linux and Windows 10/11, reproduces the original
+> exactly, and its formulas are documented. See **[docs/SUMMARY.md](docs/SUMMARY.md)** for the
+> outcome and **[ROADMAP.md](ROADMAP.md)** for the plan and the optional extensions.
+
+## Documentation
+
+| Document | For |
+|---|---|
+| [docs/SUMMARY.md](docs/SUMMARY.md) | What was done, the formulas, and the findings |
+| [docs/FORMULAS.md](docs/FORMULAS.md) | All formulas with derivations and verification status |
+| [docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md) | Specification of the original program (black-box tested) |
+| [docs/DEVELOPING.md](docs/DEVELOPING.md) | Architecture, extending, testing, releasing |
+| [docs/WINDOWS_TEST.md](docs/WINDOWS_TEST.md) | Manual test checklist for Windows 10/11 |
+| [CLAUDE.md](CLAUDE.md) | Short guide for AI coding assistants |
 
 ## Download
 
