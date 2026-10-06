@@ -1,6 +1,6 @@
 # Windows test checklist (Windows 10 / Windows 11)
 
-Thank you for testing! This takes about 10 minutes. Please note the Windows version
+Thank you for testing! This takes about 15 minutes. Please note the Windows version
 (Settings → System → About: Windows 10 or 11 and the version number, e.g. 23H2) and report
 anything that differs from the expected results below.
 
@@ -30,10 +30,18 @@ The first start takes a few seconds, because the program unpacks itself to a tem
 | 9 | Clear the R1 value of row (2), then click **Phase** | ERROR: *All Component Values MUST be Specified and Greater than Zero* |
 | 10 | Click **Clear** | The table and graph are empty, and F1/F2/C are unchanged. |
 | 11 | Display scaling: Settings → Display → Scale 150 % (if possible), then restart the program | The window is larger, but the layout is the same and the text is not cut off. |
-| 12 | Click **Exit** | An *About* box appears (credits and GPL licence). After OK the program closes. |
+| 12 | Set F1 back to `270`, click filter button **3**, then click **Bill Mode** (top right, next to Design) | A second, resizable window titled *… Bill Mode* replaces the classic one. F1 = 270, F2 = 3600, C = 10, section button **6** (3 per path) and series **E24** are selected. |
+| 13 | Click **Design** | Row (1): F1 = **91.23**, R1 = **174456.79**, R1 E24 = **180000.00**, C1 = **10 nF**. Below the graph: *270–3600 Hz: max error 0.1335°, min suppression 58.7 dB*. |
+| 14 | Click **Pair (sum)**, then **E-series R** | Row (1) of R1 E24 pair shows **150000.00 + 24000.00**. The curve changes, and the line below the graph says max error **0.3241°**. |
+| 15 | Click **Perfect R** and **Single**. Open the C1 drop-down of row (1) and pick **22 nF** | R1 of row (1) changes to **79298.54**, and F1 stays at 91.23. |
+| 16 | Type `20` in X axis **Min** and `20000` in **Max**, then click **Set axis** | The graph's frequency axis now runs from 20 to 20k. |
+| 17 | Click section button **7**, then **Design** | Path 1 fills 4 rows (row (1): R1 = **204525.61**) and path 2 fills 3. The line below the graph says max error **0.0386°**. |
+| 18 | Resize the Bill Mode window | The table and graph stretch, and nothing is cut off. |
+| 19 | Click **Classic Mode** (or press Ctrl+B) | The classic window returns, with filter button **4** selected (7 sections round up to 4 per path). |
+| 20 | Click **Exit** | An *About* box appears (credits and GPL licence). After OK the program closes. |
 
 ## 3. Please report
 
-- Windows version, and whether each check passed. A screenshot after step 6 would be great
-  (Win + Shift + S).
+- Windows version, and whether each check passed. Screenshots after steps 6 and 17 would be
+  great (Win + Shift + S).
 - Any warnings, crashes or slow starts, plus how many seconds the first start took.

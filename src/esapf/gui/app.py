@@ -34,7 +34,8 @@ def self_test(window: MainWindow, bill: BillWindow) -> int:
     bill.refresh()
     bill_shown = [w.text() for w in bill.cells["R1"][:3]]
     bill_ok = bill_shown == BILL_SELF_TEST_EXPECTED and not bill.grab().isNull()
-    print(f"Bill Mode self-test {'passed' if bill_ok else 'FAILED'}: R1 = {bill_shown} Ω")
+    # ASCII only: a Windows console (cp1252) cannot print "Ω".
+    print(f"Bill Mode self-test {'passed' if bill_ok else 'FAILED'}: R1 = {bill_shown} ohm")
     return 0 if ok and bill_ok else 1
 
 

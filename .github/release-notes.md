@@ -3,6 +3,24 @@ Filter Designer* by Lawrence Woolf, GJ3RAX, a 2002 tool for designing 90° all-p
 networks for phasing SSB transmitters and receivers. It reproduces the original's results
 exactly and runs on Windows 10/11 and Linux.
 
+## What's new in 0.2.0
+
+**Bill Mode**, a second, practical window. Open it with the new **Bill Mode** button in the
+classic window or with Ctrl+B. It adds:
+
+- 90° frequencies to 2 decimal places, and resistances in ohms (to 0.01 Ω);
+- the nearest **E6, E12, E24, E48, E96 or E192** resistor next to each calculated value, or the
+  **pair** from that series whose sum comes closest;
+- the graph drawn from either the perfect or the E-series resistors, with a settable
+  frequency range, axis labels, and the worst-case error and suppression across F1–F2;
+- a drop-down list of **E6 capacitors (10 pF to 1 µF)** for each section; after Design, picking
+  a capacitor recalculates that section's resistor;
+- **2 to 12 sections in total, odd counts included** (3, 5, 7, 9, 11), designed exactly with
+  elliptic functions. This also fixes the original's loss of accuracy for very wide bands.
+
+The classic window still reproduces the original program exactly. Its only change is the
+Bill Mode button, for which the Design button was made narrower.
+
 ## Download
 
 | System | File |

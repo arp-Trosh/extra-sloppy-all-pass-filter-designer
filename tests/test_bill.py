@@ -6,6 +6,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+from PySide6.QtGui import QFontInfo
 from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton, QWidget
 
 from esapf.bill import (
@@ -359,7 +360,11 @@ def test_classic_bill_mode_button_fits(app: QApplication) -> None:
     w = MainWindow()
     b = w.bill_button
     assert b.geometry().getRect() == L.BILL_MODE_BUTTON
-    assert b.fontMetrics().horizontalAdvance(b.text()) <= b.width() - 4  # inside the border
+    family = QFontInfo(b.font()).family()
+    if family not in L.FONT_FAMILIES:  # e.g. Qt's offscreen platform on Windows CI
+        pytest.skip(f"layout font not available here (got {family!r})")
+    # 62 px in Liberation Sans, 61 px in Microsoft Sans Serif: inside the 2-px border.
+    assert b.fontMetrics().horizontalAdvance(b.text()) <= b.width() - 4
     design = next(x for x in w.findChildren(QPushButton) if x.text() == "Design")
     assert design.geometry().right() < b.geometry().left()
 
