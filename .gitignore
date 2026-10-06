@@ -13,6 +13,7 @@ __pycache__/
 build/
 dist/
 *.spec
+!/packaging/esapf-gui.spec
 
 # Wine prefix / local scratch
 .wine/

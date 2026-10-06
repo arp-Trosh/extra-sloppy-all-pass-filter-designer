@@ -34,3 +34,13 @@ def test_gui_starts_offscreen() -> None:
     w = MainWindow()
     assert (w.width(), w.height()) == (520, 474)
     assert app is not None
+
+
+def test_gui_self_test_entry_point() -> None:
+    env = os.environ | {"QT_QPA_PLATFORM": "offscreen"}
+    out = subprocess.run(
+        [sys.executable, "-m", "esapf.gui", "--self-test"],
+        capture_output=True, text=True, env=env, timeout=60,
+    )  # fmt: skip
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert "self-test passed" in out.stdout

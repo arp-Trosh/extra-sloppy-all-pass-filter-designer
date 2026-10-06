@@ -24,6 +24,9 @@ dev = [
     "mypy>=1.11",
     "pillow>=12.3.0",
 ]
+build = [
+    "pyinstaller>=6.10",
+]
 
 [build-system]
 requires = ["hatchling"]
