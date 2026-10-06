@@ -5,7 +5,28 @@ A GPL-3.0 clean-room re-implementation of the J-Tek *All Pass Filter Designer* (
 **Original program page:** <https://www.gj3rax.com/apf.htm>
 **Repository:** <https://github.com/arp-Trosh/extra-sloppy-all-pass-filter-designer>
 **Licence:** GPL-3.0-only
-**Status:** Phases 0–5 complete (2026-10-06). The Windows hardware test is pending, and Phase 6 is to be decided (§7.1). The final summary is in `docs/SUMMARY.md`. The Phase 6 extensions are deferred (§7.1).
+**Status:** Phases 0–5 complete (2026-10-06). The Windows hardware test is pending, and Phase 6 is to be decided (§7.1). The final summary is in `docs/SUMMARY.md`. The Phase 6 extensions are deferred (§7.1). User feature requests U1–U8 are listed in §0.
+
+---
+
+## 0. User feature requests (received 2026-10-06), in order of ease
+
+These requests come from a user of the program. They are listed **easiest first**. Effort uses the scale from §7.1: XS is under an hour, S is under ½ session, M is about 1 session, L is several sessions. **Nothing is scheduled yet.** The user decides phase by phase.
+
+**Where these features go: "Bill Mode".** Items U1, U2, U3, U5, U6 and U8 change what the main window shows, but the classic window must keep matching the original (CLAUDE.md, decision 6), and `test_vs_original.py`, `test_form_replay.py` and `test_gui.py` enforce this. So all eight features go in a separate top-level window called **Bill Mode**. It reuses `core/`, keeps its button behaviour in a toolkit-free state class like `FormState`, and leaves the classic window and its tests unchanged. ✅ Decided 2026-10-06 (decision 8). **U1–U5 approved and in progress.**
+
+| # | Request (as received) | What it involves | Effort | Depends on | Backlog overlap |
+|---|---|---|---|---|---|
+| U1 | Show the real frequency to 2 decimal places | New formatter, e.g. `f"{f:.2f}"`. The original truncates F to an integer (`legacy.format_f`), so this goes only in the new view. | XS | View decision | — |
+| U2 | Show resistances in ohms, not kilohms, rounded to 0.01 Ω | Formatter and column header (Ω). Input parsing must accept ohms in the new view. Note that 0.01 Ω is coarser than the original's 6 decimals of kΩ (0.001 Ω). | XS | View decision | — |
+| U3 | Settable min/max frequency for the graph's X axis | The pixel↔frequency mapping in `gui/graph.py` is hard-coded to 100 Hz–10 kHz. Make it take `f_min`, `f_max` parameters, with the classic values as defaults, and add two input boxes and validation (min < max, both > 0). Grid lines and labels must follow the chosen decades. | S | View decision | 6.14 (zoom) |
+| U4 | Selector buttons for E6, E12, E24, E48, E96 and E192; show the nearest standard resistor to each calculated value | `core/eseries.py` with the IEC 60063 tables and a nearest-value function (on a log scale, across decades). In the UI: a button group and an extra "R std" column per path. | S | — | Replaces 6.3 |
+| U5 | Choose whether the graph is drawn from the "perfect" R values or the E-series values | A toggle that feeds either the ideal R values or the U4 values into the existing phase/suppression calculation. Showing both curves together would be a cheap extra. | S | U4 | Part of 6.8 |
+| U6 | Each capacitor value selectable from a drop-down list of E6 values, 10 pF to 1 µF | 31 values (10, 15, 22, 33, 47, 68 × 10 pF…100 nF, plus 1 µF). Use editable `QComboBox` cells so measured values can still be typed (see 6.6). The resistors are recalculated from each section's own C. | M | View decision, U4 tables | Helps 6.6 |
+| U7 | Choose single resistors or 2 resistors; with 2, pick the pair from the selected series whose **sum** is closest to the required R | Series-pair search in `core/eseries.py`. E192 over about 6 decades is around 1 200 values, so a sorted two-pointer search is instant. Show both parts and the error. Optional: parallel pairs as well. | M | U4 | Replaces 6.4 (series only) |
+| U8 | Support 3, 5, 7, 9 and 11 sections in total (today only 2–12 in pairs) | Maths: the Darlington solution with N total poles places k_j = (2j+1)/(4N) alternately on the two paths. For even N this is exactly Oppelt's eq. 10. For odd N, one path gets one extra section, and the middle one has τ = 1/√(ω1ω2). This must go in a **new** function (the `oppelt_design()` defaults stay the same), checked against the exact elliptic reference in `test_elliptic.py`. The original can't be used as an oracle here. UI: the two paths have different row counts, and there are new count buttons. | M–L | View decision | Related to 6.1 |
+
+**Suggested grouping:** a first batch of U1–U5 (one or two sessions, all small once the Practical view exists), then U6 and U7, then U8 on its own because it is the only one that touches the design maths.
 
 ---
 
@@ -385,8 +406,8 @@ Nothing here is scheduled. Once Phase 5 is done, each item will be marked **Acce
 |---|---|---|---|---|---|
 | 6.1 | **Any number of sections** (n > 6) | Wider bandwidth or a smaller phase error than the original allows | S | 2 | Undecided |
 | 6.2 | **Exact elliptic design** (`scipy.special.ellipk/ellipj`) | Independent check of Oppelt's series; the design stays accurate for extreme F2/F1 ratios | S | 2 | Undecided |
-| 6.3 | **E-series snapping** (E12/E24/E48/E96/E192) | Rounds the ideal R values to parts you can buy and shows the resulting performance | S | 2, 3 | Undecided |
-| 6.4 | **Series/parallel resistor-pair search** | Finds the 2-resistor combination closest to each ideal R (the web page suggests this) | M | 6.3 | Undecided |
+| 6.3 | **E-series snapping** (E12/E24/E48/E96/E192) | Rounds the ideal R values to parts you can buy and shows the resulting performance | S | 2, 3 | Superseded by U4/U5 (§0) |
+| 6.4 | **Series/parallel resistor-pair search** | Finds the 2-resistor combination closest to each ideal R (the web page suggests this) | M | 6.3 | Series part superseded by U7 (§0) |
 | 6.5 | **Monte-Carlo tolerance analysis** | Randomises R and C within their tolerances; plots the error envelope and a suppression yield histogram | M | 2, 3 | Undecided |
 | 6.6 | **Matched-capacitor workflow** | Enter the measured C values, then the program recalculates the R values to compensate | S | 3 | Undecided |
 | 6.7 | **Amplitude imbalance (R1 ≠ R2, gain mismatch)** | Suppression using the general formula with amplitude ratio A (§3.3) | S | 2 | Undecided |
@@ -426,6 +447,7 @@ Nothing here is scheduled. Once Phase 5 is done, each item will be marked **Acce
 | 5 | Hosting: GitHub repository. **Public since 2026-10-06** (free CI minutes), with commit history rewritten to the GitHub noreply e-mail. The old private repo was renamed `…-old-private`. | ✅ 2026-10-06 |
 | 6 | UI: Phase 3 replicates the original 2002 layout. A modernised UI is optional backlog item 6.14. | ✅ Confirmed 2026-10-06 |
 | 7 | Phase 6 extensions | ⏸ Deferred until Phases 1–5 are complete (§7.1) |
+| 8 | User requests U1–U8 (§0) go in a separate **Bill Mode** window; the classic window stays a replica. U1–U5 are the first batch. | ✅ 2026-10-06 |
 
 ---
 
