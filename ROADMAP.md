@@ -5,7 +5,7 @@ A GPL-3.0 clean-room re-implementation of the J-Tek *All Pass Filter Designer* (
 **Original program page:** <https://www.gj3rax.com/apf.htm>
 **Repository:** <https://github.com/arp-Trosh/extra-sloppy-all-pass-filter-designer>
 **Licence:** GPL-3.0-only
-**Status:** Phases 0–3 complete (2026-10-06). Phases 4–5 are next. The Phase 6 extensions are deferred (§7.1).
+**Status:** Phases 0–4 complete (2026-10-06); the Windows hardware test is pending. Phase 5 is next. The Phase 6 extensions are deferred (§7.1).
 
 ---
 
@@ -237,7 +237,7 @@ Keeping `core/` separate from the GUI means that every Phase 6 extension (§7.1)
 | **2. Core maths** ✅ | `core/` modules and CLI. | ✅ Done 2026-10-06. All fixtures match the original to the displayed precision, and the article example matches (§7.4). |
 | **2b. (only if needed)** ⏭ | P-code disassembly of the functions that don't match. | **Skipped**: there were no unexplained differences. |
 | **3. GUI parity** ✅ | Qt window that replicates the original layout and workflow: Design, Phase, Reset C, Clear, n = 1–6, scale buttons, tooltips, validation messages. | ✅ Done 2026-10-06 (§7.5). Side-by-side screenshots are equivalent, and all 44 captured cases, including the three web examples, replay through the real widgets. |
-| **4. Packaging & CI** | GitHub Actions: tests, then PyInstaller on Windows and Linux. Release artefacts are attached to GitHub Releases. | Working `.exe` checked on Win10/11 (by you or a VM) plus an AppImage or Arch run. |
+| **4. Packaging & CI** ✅ | GitHub Actions: tests, then PyInstaller on Windows and Linux. Release artefacts are attached to GitHub Releases. | ✅ Done 2026-10-06 (§7.6). CI is green, and both executables pass their self-test on CI and on Arch (Linux natively, Windows under Wine). ☐ **Real Win10/11 test pending** (a friend will use `docs/WINDOWS_TEST.md`). |
 | **5. Docs** | README, `FORMULAS.md` and a final work summary with the formulas. | The deliverable for goal #2. |
 | **6. Extensions** | **Deferred.** Chosen from the backlog in §7.1 after Phases 1–5 are complete. | — |
 
@@ -330,6 +330,35 @@ Rough effort: Phases 0–5 take a few working sessions. Phase 1 needs the most h
 - **A bug was caught and fixed:** `clicked(bool)` was overriding the lambda defaults of the n and scale buttons.
 
 **Tool:** `uv run tools/render_gui.py <case> out.png --diff <original_form.png> diff.png` renders the window after replaying a case and diffs it against the original's screenshot.
+
+### 7.6 Phase 4 results (2026-10-06)
+
+**Build:**
+- `uv run --group build packaging/build.py` runs PyInstaller and produces a single-file, windowed GUI executable with an icon.
+- `packaging/esapf-gui.spec` filters out unused Qt plugins and libraries: the virtual keyboard (which drags in Qt Quick/Qml), QtPdf, the GTK theme (GTK plus a second ICU), and the embedded/VNC platforms. It also leaves out the bundled fontconfig, so the host's is used.
+
+| Artefact | Size | Notes |
+|---|---|---|
+| `esapf-gui-<ver>-windows-x64.exe` | 49 MB | Not code-signed, so SmartScreen will show "More info → Run anyway". |
+| `esapf-gui-<ver>-linux-x86_64` | 71 MB | Built on Ubuntu 22.04, so it needs glibc ≥ 2.35. Runs on X11 and Wayland. |
+
+The roadmap originally planned an AppImage for Linux. A single-file PyInstaller binary does the same job (one file, no install) with no extra tooling.
+
+**Self-test:** `esapf-gui --self-test` runs offscreen, presses Design, checks the displayed R values and exits with code 0. CI runs it on each built executable, on its own OS.
+
+**CI** (`.github/workflows/ci.yml`, about 4 minutes per run):
+1. Lint, format, mypy and all 306 tests on `ubuntu-latest` and `windows-latest`. The GUI and graph-pixel tests also pass on Windows.
+2. Build and self-test on `windows-latest` and `ubuntu-22.04`, then upload the artefacts.
+3. On a `v*` tag, publish a GitHub Release with both files.
+
+Jobs and the self-test step have timeouts.
+
+**Bugs found and fixed while doing this:**
+1. The plugin filter had removed Qt's `offscreen` plugin. On Windows that made the windowed `.exe` hang behind Qt's modal "platform plugin not found" dialog.
+2. The Windows build picked the bitmap font "MS Sans Serif". It showed up as unbolded, misplaced text when the CI `.exe` was run under Wine. The font list is now TrueType only, led by Microsoft Sans Serif.
+3. The bundled fontconfig from Ubuntu 22.04 produced warnings on newer distributions.
+
+**Pending:** a test on real Windows 10/11 hardware, using `docs/WINDOWS_TEST.md` (12 checks).
 
 ### 7.1 Phase 6 backlog (to be decided after Phases 1–5)
 
