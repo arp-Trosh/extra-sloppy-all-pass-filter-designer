@@ -16,10 +16,12 @@ PySide6 and NumPy, managed with uv.
   seconds and hertz; the UI uses kΩ, nF and Hz.
 - `oppelt_design()` defaults (5 nome terms, 4 τ terms) reproduce the original exactly. Never
   change the defaults; add new algorithms as new functions.
-- Button behaviour lives in `src/esapf/form.py` (`FormState`), not in widgets.
+- Button behaviour lives in `src/esapf/form.py` (`FormState`) and, for Bill Mode,
+  `src/esapf/bill.py` (`BillState`), not in widgets.
 - The classic window (`gui/layout.py`, `gui/graph.py`) must keep matching the original.
   `tests/test_vs_original.py`, `test_form_replay.py` and `test_gui.py` check this against
-  fixtures captured from the real program. Put new features in new dialogs or views.
+  fixtures captured from the real program. New features go in **Bill Mode**
+  (`gui/bill_window.py`, Ctrl+B or `esapf-gui --bill`; ROADMAP.md §0), not the classic window.
 - Fonts must stay TrueType (`layout.FONT_FAMILIES`). The bitmap "MS Sans Serif" breaks on Windows.
 - `tests/fixtures/original/` is ground truth captured from `Apf.exe`. Never edit it by hand;
   re-capture with `tools/oracle/capture.py` (see docs/DEVELOPING.md).

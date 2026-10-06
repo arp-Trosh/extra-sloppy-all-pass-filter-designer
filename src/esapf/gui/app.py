@@ -1,31 +1,68 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """GUI entry point: ``esapf-gui`` or ``python -m esapf.gui``.
 
-``esapf-gui --self-test`` starts the window offscreen, presses Design with the default
-inputs, checks the result and exits with status 0 (used by CI on the built executables).
+``esapf-gui --bill`` starts in Bill Mode (the practical window); Ctrl+B switches between
+the two windows. ``esapf-gui --self-test`` starts the windows offscreen, presses Design with
+the default inputs, checks the result and exits with status 0 (used by CI on the built
+executables).
 """
 
 import os
 import sys
 from importlib.resources import files
 
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import QApplication
 
+from esapf.gui.bill_window import BillWindow
 from esapf.gui.main_window import MainWindow
 
 # Default design (270-3600 Hz, n = 3, C = 10 nF) as displayed by the original program.
 SELF_TEST_EXPECTED = ["174.456750", "23.106614", "5.170433"]
+BILL_SELF_TEST_EXPECTED = ["174456.75", "23106.61", "5170.43"]
+SWITCH_KEY = "Ctrl+B"
 
 
-def self_test(window: MainWindow) -> int:
+def self_test(window: MainWindow, bill: BillWindow) -> int:
     window.state.design()
     window.refresh()
     shown = [w.text() for w in window.cells["R1"][:3]]
     image = window.grab()
     ok = shown == SELF_TEST_EXPECTED and not image.isNull() and window.state.network is not None
     print(f"self-test {'passed' if ok else 'FAILED'}: R1 = {shown}")
-    return 0 if ok else 1
+    bill.state.design()
+    bill.refresh()
+    bill_shown = [w.text() for w in bill.cells["R1"][:3]]
+    bill_ok = bill_shown == BILL_SELF_TEST_EXPECTED and not bill.grab().isNull()
+    print(f"Bill Mode self-test {'passed' if bill_ok else 'FAILED'}: R1 = {bill_shown} Ω")
+    return 0 if ok and bill_ok else 1
+
+
+class ModeSwitcher:
+    """Shows one window at a time and carries F1, F2, C and n over on each switch."""
+
+    def __init__(self, classic: MainWindow, bill: BillWindow) -> None:
+        self.classic, self.bill = classic, bill
+        for w in (classic, bill):
+            QShortcut(QKeySequence(SWITCH_KEY), w).activated.connect(self.toggle)
+        bill.classic_button.clicked.connect(self.toggle)
+        classic.setToolTip(f"{SWITCH_KEY}: switch to Bill Mode")
+
+    def toggle(self) -> None:
+        if self.classic.isVisible():
+            self._switch(self.classic, self.bill)
+        else:
+            self._switch(self.bill, self.classic)
+
+    def _switch(self, source: MainWindow | BillWindow, target: MainWindow | BillWindow) -> None:
+        src, dst = source.state, target.state
+        dst.f1, dst.f2, dst.c = src.f1, src.f2, src.c
+        if dst.n != src.n:
+            dst.select_n(src.n)
+        target.refresh()
+        target.move(source.pos())
+        source.hide()
+        target.show()
 
 
 def main() -> int:
@@ -36,10 +73,11 @@ def main() -> int:
     app = existing if isinstance(existing, QApplication) else QApplication(sys.argv)
     app.setApplicationName("Extra Sloppy All Pass Filter Designer")
     app.setWindowIcon(QIcon(str(files("esapf.gui") / "icon.png")))
-    window = MainWindow()
+    window, bill = MainWindow(), BillWindow()
     if testing:
-        return self_test(window)
-    window.show()
+        return self_test(window, bill)
+    switcher = ModeSwitcher(window, bill)  # noqa: F841 (keeps the connections alive)
+    (bill if "--bill" in sys.argv else window).show()
     return app.exec()
 
 

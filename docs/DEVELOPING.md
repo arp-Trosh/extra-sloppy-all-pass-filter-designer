@@ -23,12 +23,16 @@ src/esapf/
     metrics.py       suppression, band statistics           (§3)
     network.py       Section / Network: R [kΩ], C [nF] ↔ τ [s]
     legacy.py        original-program quirks: VB Val(), display formats, error messages
+    eseries.py       IEC 60063 E6…E192 tables, nearest standard value
   form.py          FormState: window state as displayed text + button semantics (no Qt)
-  gui/             Qt widgets only render FormState and forward events
+  bill.py          BillState: the same for Bill Mode (ohms, E-series, axis range)
+  gui/             Qt widgets only render FormState / BillState and forward events
     layout.py        geometry, colours, fonts, tooltips of the 2002 window
     graph.py         QPainter replica of the original graph
-    main_window.py   widgets ↔ FormState binding
-    app.py           entry point (esapf-gui), --self-test
+    main_window.py   widgets ↔ FormState binding (the classic window)
+    bill_graph.py    Bill Mode graph: resizable, labelled, settable X range
+    bill_window.py   Bill Mode window (Qt layouts) ↔ BillState binding
+    app.py           entry point (esapf-gui), --bill, Ctrl+B mode switch, --self-test
   cli.py           command line (esapf)
 tests/             see "Tests" below
 tools/             wine.sh (original under Wine), oracle/ (fixture capture), render_gui.py
@@ -39,13 +43,13 @@ docs/              FORMULAS, ORIGINAL_BEHAVIOUR (the spec), WINDOWS_TEST, this f
 **Rules**
 
 1. Maths lives in `core/` and is unit-tested without a GUI. New calculations go there first.
-2. Behaviour lives in `form.py`, not in widgets. That is what lets the captured fixtures be
+2. Behaviour lives in `form.py` (classic) and `bill.py` (Bill Mode), not in widgets. That is what lets the captured fixtures be
    replayed headlessly.
 3. The classic window must keep matching the original. `tests/test_vs_original.py`,
-   `test_form_replay.py` and `test_gui.py` fail if it drifts. Put new UI in new windows,
-   dialogs or menus, or in the modernised UI (backlog 6.14), rather than changing the classic
-   layout.
-4. Units at the boundaries: the UI uses kΩ, nF and Hz; `core` uses seconds and hertz.
+   `test_form_replay.py` and `test_gui.py` fail if it drifts. New features go in Bill Mode
+   (ROADMAP.md §0) or in other new windows or dialogs, never in the classic layout.
+4. Units at the boundaries: the classic UI uses kΩ, nF and Hz; Bill Mode shows Ω (`bill.py`
+   converts); `core` uses seconds and hertz.
    `Section` converts between them.
 5. `mypy --strict` covers all of `src/`. Ruff enforces style (line length 100).
 6. Every source file starts with `# SPDX-License-Identifier: GPL-3.0-only`.
@@ -59,6 +63,7 @@ docs/              FORMULAS, ORIGINAL_BEHAVIOUR (the spec), WINDOWS_TEST, this f
 | `test_vs_original.py` | every captured table, recalculation, validation message and graph curve |
 | `test_form_replay.py` | all 44 captured cases replayed through `FormState` |
 | `test_gui.py` | the same cases through the real widgets, and graph pixels vs the original |
+| `test_bill.py` | E-series tables and lookup, `BillState`, the Bill Mode window, mode switching |
 | `test_smoke.py` | imports, the core/Qt separation, CLI and GUI entry points |
 
 The fixtures in `tests/fixtures/original/` come from the original `Apf.exe`. To add a case:

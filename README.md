@@ -14,6 +14,17 @@ No code from the original is used.
 > exactly, and its formulas are documented. See **[docs/SUMMARY.md](docs/SUMMARY.md)** for the
 > outcome and **[ROADMAP.md](ROADMAP.md)** for the plan and the optional extensions.
 
+## Bill Mode
+
+Besides the classic window, which copies the 2002 original, there is a practical window
+called **Bill Mode**. Press **Ctrl+B** to switch between them (F1, F2, C and the section
+count carry over), or start with `esapf-gui --bill`. Bill Mode shows:
+
+- 90° frequencies to 2 decimal places and resistances in ohms (to 0.01 Ω);
+- the nearest E6, E12, E24, E48, E96 or E192 resistor next to each calculated value;
+- the graph from either the perfect or the E-series resistors, with a settable X-axis range,
+  a frequency scale, and the worst-case error and suppression in the F1–F2 band.
+
 ## Documentation
 
 | Document | For |
@@ -38,6 +49,7 @@ installation is needed: download and run.
 
 ```sh
 uv run esapf-gui                     # the GUI (or: python -m esapf.gui)
+uv run esapf-gui --bill              # start in Bill Mode
 ```
 
 ## Building the executable
