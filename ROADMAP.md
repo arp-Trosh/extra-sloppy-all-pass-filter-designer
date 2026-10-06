@@ -5,7 +5,7 @@ A GPL-3.0 clean-room re-implementation of the J-Tek *All Pass Filter Designer* (
 **Original program page:** <https://www.gj3rax.com/apf.htm>
 **Repository:** <https://github.com/arp-Trosh/extra-sloppy-all-pass-filter-designer>
 **Licence:** GPL-3.0-only
-**Status:** Phases 0–1 complete (2026-10-06). Phases 2–5 are next. The Phase 6 extensions are deferred (§7.1).
+**Status:** Phases 0–2 complete (2026-10-06). Phases 3–5 are next. The Phase 6 extensions are deferred (§7.1).
 
 ---
 
@@ -200,19 +200,22 @@ extra-sloppy-all-pass-filter-designer/
 ├── LICENSE                   # GPL-3.0
 ├── src/esapf/
 │   ├── core/                 # pure maths, no GUI imports (UI-independent, fully unit-tested)
-│   │   ├── allpass.py        # section phase, chain phase, phase difference
-│   │   ├── design.py         # Oppelt/elliptic design → τ, f90, R, C
-│   │   └── metrics.py        # phase error, suppression, band statistics
-│   ├── model.py              # Design dataclass
+│   │   ├── allpass.py        # section phase, chain phase, phase difference / error
+│   │   ├── design.py         # Oppelt design → τ (original's 5/4-term truncation by default)
+│   │   ├── metrics.py        # suppression (incl. amplitude imbalance), band statistics
+│   │   ├── network.py        # Section / Network: R (kΩ), C (nF) ↔ τ
+│   │   └── legacy.py         # original-program behaviour: VB Val(), display formats, validation
 │   ├── gui/
 │   │   ├── main_window.py    # replica of the original layout/workflow
 │   │   ├── table.py          # editable R/C table
 │   │   └── plot.py           # phase-error + suppression twin-axis plot
-│   └── cli.py                # `esapf design 270 3600 -n 3 -c 10n` → table / CSV
+│   └── cli.py                # `esapf design 270 3600 -n 3 -c 10`, `esapf analyse ...` → table / CSV
 ├── tests/
-│   ├── test_oppelt_example.py   # article example, numbers in §3.5
-│   ├── test_vs_original.py      # JSON fixtures from the Wine oracle
-│   └── fixtures/
+│   ├── test_core.py             # article example, identities, metrics, legacy, CLI
+│   ├── test_vs_original.py      # every captured fixture: tables, validation, graph curves
+│   ├── oracle.py                # fixture loader
+│   └── fixtures/original/       # 44 cases captured from Apf.exe (Phase 1)
+├── tools/                    # wine.sh, oracle/ (capture + verify_model.py)
 ├── reference/
 │   ├── fetch.sh              # downloads the original exe, web pages and article (SHA-256 checked)
 │   └── (downloaded files — git-ignored, not redistributed)
@@ -231,8 +234,8 @@ Keeping `core/` separate from the GUI means that every Phase 6 extension (§7.1)
 |---|---|---|
 | **0. Setup** ✅ | Git and GitHub repo (private), GPL-3.0. The original runs under Wine 11.19 (`tools/wine.sh original`). VBDec 8.4.24 runs under Wine and parses `apf.exe` (`tools/wine.sh vbdec`). Python skeleton: `uv`, `ruff`, `mypy --strict`, `pytest`, PySide6 6.11 and pyqtgraph. | ✅ Done 2026-10-06; see §7.2. |
 | **1. Oracle capture** ✅ | 44 reference cases captured automatically on Xvfb (§4.2). The open points in §3.5 are settled. | ✅ Done 2026-10-06: `tests/fixtures/original/`, `docs/ORIGINAL_BEHAVIOUR.md`. Decompilation was **not needed**, so Phase 2b is expected to be skipped. |
-| **2. Core maths** | `core/` modules and CLI. | All fixtures match the original to the displayed precision, and the article example matches. |
-| **2b. (only if needed)** | P-code disassembly of the functions that don't match. | Every difference explained. |
+| **2. Core maths** ✅ | `core/` modules and CLI. | ✅ Done 2026-10-06. All fixtures match the original to the displayed precision, and the article example matches (§7.4). |
+| **2b. (only if needed)** ⏭ | P-code disassembly of the functions that don't match. | **Skipped**: there were no unexplained differences. |
 | **3. GUI parity** | Qt window that replicates the original layout and workflow: Design, Phase, Reset C, Clear, n = 1–6, scale buttons, tooltips, validation messages. | Side-by-side screenshots look equivalent, and a user can repeat the three web examples. |
 | **4. Packaging & CI** | GitHub Actions: tests, then PyInstaller on Windows and Linux. Release artefacts are attached to GitHub Releases. | Working `.exe` checked on Win10/11 (by you or a VM) plus an AppImage or Arch run. |
 | **5. Docs** | README, `FORMULAS.md` and a final work summary with the formulas. | The deliverable for goal #2. |
@@ -271,6 +274,29 @@ Rough effort: Phases 0–5 take a few working sessions. Phase 1 needs the most h
   - There is no upper frequency limit.
 - **Fixtures** for the Phase 2 tests: `tests/fixtures/original/*.json` (44 cases) plus graph PNGs.
 - **Phase 2b (decompilation):** not needed.
+
+### 7.4 Phase 2 results (2026-10-06)
+
+**Modules in `src/esapf/core/`** (NumPy only, `mypy --strict` clean, no Qt imports, enforced by a test):
+- `design.py`: `oppelt_design(f1, f2, n, nome_terms=5, tau_terms=4)`. The defaults reproduce the original; more terms give the exact elliptic solution.
+- `allpass.py`: chain phase, phase difference and phase error, vectorised over frequency.
+- `metrics.py`: `suppression_db` (with an optional amplitude ratio, ready for 6.7), `band_stats` and `log_grid`.
+- `network.py`: `Section` / `Network` in UI units (kΩ, nF), plus `Network.from_design`.
+- `legacy.py`: the original's input parsing (VB `Val`), display formats (`%.6f` R, truncated F) and its four validation messages, checked in the original order.
+
+**CLI:**
+- `esapf design F1 F2 -n N -c C` prints the original's table and the in-band worst case.
+- `esapf analyse --path1 R:C,... --path2 R:C,... [--band F1 F2]` analyses a given set of components.
+- Both take `--csv FILE` to write the 100 Hz–10 kHz sweep.
+
+**Tests: 179 passing in under 1 s.**
+- All 42 captured Design tables: R to 6 decimals and F, character for character.
+- All 7 Phase recalculations.
+- All 53 validation outcomes and messages.
+- The phase and suppression curves of 35 captured graphs, within 1.0 / 1.5 px RMS.
+- Oppelt's worked example (τ values and the 0.011° error).
+- Design identities: reciprocal pairs, symmetry, equiripple error, and error decreasing as n grows.
+- The CLI.
 
 ### 7.1 Phase 6 backlog (to be decided after Phases 1–5)
 

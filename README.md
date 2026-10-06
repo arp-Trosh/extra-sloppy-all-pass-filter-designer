@@ -10,8 +10,16 @@ re-implementation**. It is built from the published mathematics (R. Oppelt, DB2N
 *VHF Communications* 2/1987) and checked against the original program running under Wine.
 No code from the original is used.
 
-> **Status:** Phases 0–1 complete: setup, plus the reference behaviour captured from the original
-> ([docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md)). See [ROADMAP.md](ROADMAP.md).
+> **Status:** Phases 0–2 complete. The maths core and CLI reproduce the original exactly
+> ([docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md)). The GUI comes in Phase 3. See [ROADMAP.md](ROADMAP.md).
+
+## Command line
+
+```sh
+uv run esapf design 270 3600 -n 3 -c 10          # like the Design button
+uv run esapf analyse --path1 649:2.7,232:1,52.3:1 --path2 15:1,113:1,511:1 --band 300 3000
+uv run esapf design 50 5000 -n 5 --csv sweep.csv # also write the 100 Hz–10 kHz sweep
+```
 
 ## Reference material
 
