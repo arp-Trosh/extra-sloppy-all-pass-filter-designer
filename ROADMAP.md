@@ -423,7 +423,7 @@ Nothing here is scheduled. Once Phase 5 is done, each item will be marked **Acce
 | 2 | Stack: Python + PySide6 (pyqtgraph replaced by a custom QPainter graph in Phase 3, see §5) | ✅ Approved 2026-10-06 |
 | 3 | Licence: GPL-3.0 | ✅ 2026-10-06 |
 | 4 | Name: *Extra Sloppy All Pass Filter Designer* (repo `extra-sloppy-all-pass-filter-designer`, package `esapf`) | ✅ 2026-10-06 |
-| 5 | Hosting: GitHub repository, **kept private until the software is finished** | ✅ Created 2026-10-06 |
+| 5 | Hosting: GitHub repository. **Public since 2026-10-06** (free CI minutes), with commit history rewritten to the GitHub noreply e-mail. The old private repo was renamed `…-old-private`. | ✅ 2026-10-06 |
 | 6 | UI: Phase 3 replicates the original 2002 layout. A modernised UI is optional backlog item 6.14. | ✅ Confirmed 2026-10-06 |
 | 7 | Phase 6 extensions | ⏸ Deferred until Phases 1–5 are complete (§7.1) |
 

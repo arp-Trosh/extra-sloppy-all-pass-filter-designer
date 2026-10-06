@@ -108,8 +108,7 @@ For example, 270–3600 Hz gives 0.133° with n = 3 and 0.011° with n = 4.
 
 1. Run the real Windows 10/11 test (`docs/WINDOWS_TEST.md`). A friend of the user will do this.
 2. Choose Phase 6 extensions from `ROADMAP.md` §7.1.
-3. Optional: tag a first release (`v0.1.0`), and decide on public visibility. Before going
-   public, consider rewriting commit author e-mails to GitHub's noreply address.
+3. Optional: tag a first release (`v0.1.0`). The repository has been public since 2026-10-06.
 
 ## Credits
 
