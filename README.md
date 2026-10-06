@@ -14,11 +14,30 @@ No code from the original is used.
 > reproduce the original ([docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md)).
 > Packaging for Windows and Linux comes in Phase 4. See [ROADMAP.md](ROADMAP.md).
 
-## Running
+## Download
+
+Single-file executables for **Windows (x64)** and **Linux (x86_64)** are built by GitHub Actions.
+You can get them from the *Releases* page, or from the artefacts of the latest CI run. No
+installation is needed: download and run.
+
+- **Windows:** the executable is not code-signed. If SmartScreen warns, choose *More info → Run anyway*.
+- **Linux:** run `chmod +x esapf-gui-*-linux-x86_64` first. It needs glibc 2.35 or newer (Ubuntu 22.04+, Debian 12+, Fedora 36+ and Arch all qualify).
+
+## Running from source
 
 ```sh
 uv run esapf-gui                     # the GUI (or: python -m esapf.gui)
 ```
+
+## Building the executable
+
+```sh
+uv run --group build packaging/build.py     # -> dist/esapf-gui (Linux) or dist/esapf-gui.exe (Windows)
+dist/esapf-gui --self-test                  # headless check: runs a design, exit code 0 = OK
+```
+
+PyInstaller builds only for the OS it runs on, so the Windows `.exe` must be built on Windows.
+CI does this; see `.github/workflows/ci.yml`. Pushing a tag `v*` publishes a GitHub Release.
 
 ## Command line
 

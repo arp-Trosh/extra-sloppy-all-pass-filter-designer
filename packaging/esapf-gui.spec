@@ -16,7 +16,7 @@ EXCLUDES = [
 # GTK + a second ICU via the gtk3 theme) or target platforms a desktop app never uses.
 DROP = re.compile(
     r"plugins/(egldeviceintegrations|generic)/"
-    r"|plugins/platforms/(?!libqxcb|libqwayland|qwindows|qdirect2d)"
+    r"|plugins/platforms/(?!(lib)?q(xcb|wayland|windows|direct2d|offscreen))"
     r"|plugins/platformthemes/libqgtk3"
     r"|plugins/platforminputcontexts/libqtvirtualkeyboard"
     r"|plugins/imageformats/(?!(lib)?qico)"

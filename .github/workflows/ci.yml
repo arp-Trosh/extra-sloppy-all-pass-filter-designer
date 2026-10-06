@@ -21,6 +21,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
@@ -52,6 +53,7 @@ jobs:
             exe: dist/esapf-gui
             ext: ""
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
@@ -61,6 +63,8 @@ jobs:
       - run: uv sync --locked --group build
       - run: uv run packaging/build.py
       - name: Self-test the built executable
+        # A Qt start-up failure in a windowed .exe shows a modal dialog and would hang.
+        timeout-minutes: 3
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then
