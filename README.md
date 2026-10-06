@@ -10,7 +10,8 @@ re-implementation**. It is built from the published mathematics (R. Oppelt, DB2N
 *VHF Communications* 2/1987) and checked against the original program running under Wine.
 No code from the original is used.
 
-> **Status:** planning complete; implementation not started. See [ROADMAP.md](ROADMAP.md).
+> **Status:** Phases 0–1 complete: setup, plus the reference behaviour captured from the original
+> ([docs/ORIGINAL_BEHAVIOUR.md](docs/ORIGINAL_BEHAVIOUR.md)). See [ROADMAP.md](ROADMAP.md).
 
 ## Reference material
 
@@ -19,6 +20,36 @@ not included in this repository. To download them locally:
 
 ```sh
 reference/fetch.sh
+```
+
+## Development
+
+Requires [uv](https://docs.astral.sh/uv/).
+
+```sh
+uv sync                 # create .venv with all dependencies
+uv run pytest           # tests
+uv run ruff check .     # lint      (uv run ruff format . to format)
+uv run mypy             # type-check the maths core
+uv run esapf --help     # CLI
+```
+
+### Running the original program (Linux, Wine)
+
+```sh
+tools/wine.sh setup [--vbdec] [--oracle]  # project-local prefix in .wine/, VB6 runtime
+                                          #   (+ VBDec disassembler, + oracle helper Python)
+tools/wine.sh original          # run the original Apf.exe
+tools/wine.sh vbdec             # open Apf.exe in VBDec
+tools/wine.sh kill
+```
+
+### Re-capturing the reference fixtures (needs Xvfb, xdotool, ImageMagick)
+
+```sh
+tools/wine.sh setup --oracle
+tools/oracle/capture.py [case ...]       # runs on a private Xvfb display (:99), never on your desktop
+uv run tools/oracle/verify_model.py      # re-check the formulas against the fixtures
 ```
 
 ## Credits

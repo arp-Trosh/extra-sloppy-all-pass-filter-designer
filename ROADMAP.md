@@ -5,7 +5,7 @@ A GPL-3.0 clean-room re-implementation of the J-Tek *All Pass Filter Designer* (
 **Original program page:** <https://www.gj3rax.com/apf.htm>
 **Repository:** <https://github.com/arp-Trosh/extra-sloppy-all-pass-filter-designer>
 **Licence:** GPL-3.0-only
-**Status:** Approved 2026-10-06. Method and language are approved, and Phases 1–5 are in scope. The Phase 6 extensions are deferred (§7.1).
+**Status:** Phases 0–1 complete (2026-10-06). Phases 2–5 are next. The Phase 6 extensions are deferred (§7.1).
 
 ---
 
@@ -38,7 +38,7 @@ A GPL-3.0 clean-room re-implementation of the J-Tek *All Pass Filter Designer* (
   - The number format `####0.000000`
   - The scale labels `±0.5`, `±0.2`, `±0.1`
   - The graph titles `Phase Error Degrees` and `Suppression dB`
-- It needs `msvbvm60.dll`. Wine 11.19 is already installed, so the original should run on this machine as a test oracle (to be confirmed in Phase 0).
+- It needs `msvbvm60.dll`. It runs correctly under Wine 11.19 (confirmed in Phase 0), so we can use it as a test oracle.
 
 ### 2.2 Functional spec (from the web page and screenshots in `reference/web/`)
 
@@ -91,12 +91,12 @@ General form, which we can add later, for an amplitude ratio A:
 ```
 κ   = ω1/ω2 = F1/F2                                        (7)
 ε0  = ½ · (1 − √κ)/(1 + √κ)                                (8)
-q   = ε0 + 2ε0⁵ + 15ε0⁹ + 150ε0¹³ + 1707ε0¹⁷ + …           (9)  (Jacobi nome)
+q   = ε0 + 2ε0⁵ + 15ε0⁹ + 150ε0¹³ + 1707ε0¹⁷               (9)  (Jacobi nome; the original uses exactly these 5 terms)
 k_v = (4v + 1)/(8n),   v = 0 … n−1                         (10)
 
-        Σ_m q^(m(m+1)) · cos((2m+1)π k_v)
+        Σ_{m=0..3} q^(m(m+1)) · cos((2m+1)π k_v)          (the original uses exactly 4 terms)
 τ_v,B = ─────────────────────────────────── · 1/√(ω1ω2)    (11)
-        Σ_m (−1)^m q^(m(m+1)) · sin((2m+1)π k_v)
+        Σ_{m=0..3} (−1)^m q^(m(m+1)) · sin((2m+1)π k_v)
 
 τ_v,A = 1/(ω1·ω2·τ_v,B)                                    (12)
 R_v   = τ_v / C
@@ -116,11 +116,11 @@ R_v   = τ_v / C
   - Phase-error peak of +0.5° near 3 kHz.
   - Suppression of about 50 dB around 300 Hz.
 
-**Still open** (to settle by black-box testing, Phase 1):
-- How many series terms the original uses.
-- Which path is labelled "1" and which "2", and the sign convention of the plotted error.
-- How R is rounded for display (e.g. "649", "52.3": looks like 3 significant figures in kΩ).
-- The frequency grid the graph is drawn on, and how the 80 dB clipping is done.
+**Settled in Phase 1** (full details in `docs/ORIGINAL_BEHAVIOUR.md`):
+- **Series terms:** exactly 5 q-terms and 4 τ-terms. All 132 R values match the original character for character; any other combination fails.
+- **Paths and sign:** path 1 = τ_B (rising f90), path 2 = τ_A. The plotted error is ε = 2Σatan(ωτ1) − 2Σatan(ωτ2) − 90°.
+- **Display rounding:** R is shown with 6 decimals. F is truncated to an integer. ("649" and "52.3" in the KK7B screenshot were user-typed values.)
+- **Graph:** fixed log axis from 100 Hz to 10 kHz over the full picture width. The pixel mapping is in the doc. Off-range parts are clipped at the edges.
 
 ---
 
@@ -132,13 +132,20 @@ The algorithm comes from published maths that we have already reproduced to 4–
 
 ### 4.2 Black-box oracle (Phase 1)
 
-- Run `apf.exe` under Wine. We need `msvbvm60.dll`, either from the author's site or via `winetricks vb6run`.
-- Build a reference table of 15–25 cases:
-  - Several F1/F2 pairs, all n from 1 to 6, and a few C values.
-  - The three published designs (KK7B, AN1981, N4BCU).
-  - Edge cases: F < 10 Hz, C = 0, empty fields.
-- Record the displayed F, R and C values plus screenshots. Use `xdotool`, `xwd` or `scrot` where automation helps; otherwise enter the values by hand, which is cheap at this scale.
-- Store the cases as JSON fixtures in `tests/fixtures/`. They become regression tests for the new program.
+**As implemented:**
+- `apf.exe` runs under Wine on a private **Xvfb** display, so the user's desktop is never touched.
+- A small Python helper runs *inside* Wine (Windows embeddable Python, ctypes only) and drives the VB6 form purely with Win32 messages: `WM_SETTEXT`, `WM_GETTEXT` and `BM_CLICK`. It also catches and dismisses `MsgBox` dialogs. No mouse, keyboard or OCR is involved.
+- The graph PictureBox is cropped from the Xvfb screen with ImageMagick.
+- **44 cases**, defined in `tools/oracle/cases.py`:
+  - Design for every n from 1 to 6.
+  - 13 other bands and C values, including the extremes 10–100000 Hz, swapped limits and equal limits.
+  - All 7 scales.
+  - 8 validation cases.
+  - 9 button-behaviour cases.
+  - The KK7B, AN1981 and N4BCU designs.
+  - Full-window reference shots.
+- Output goes to `tests/fixtures/original/`: JSON plus PNG files, 396 kB in total. Re-capturing produces byte-identical values and graphs.
+- `tools/oracle/verify_model.py` re-checks the formulas against the fixtures.
 
 ### 4.3 Fallback: P-code decompilation toolchain on Arch Linux
 
@@ -154,7 +161,7 @@ We use this only if a black-box result can't be explained (for example an undocu
 | `icoutils` (`wrestool`) | Pull out the icon and version resources. | pacman |
 | Ghidra | **Not recommended.** It has no VB6 P-code processor and would only show `MethCallEngine`. | pacman (extra) |
 
-How well these Windows tools run under Wine is still to be checked in Phase 0. If one won't run, a Windows VM (QEMU/virt-manager) is the backup.
+**Checked in Phase 0:** VBDec 8.4.24 installs silently into the project Wine prefix and opens `apf.exe` (`tools/wine.sh setup --vbdec`, then `tools/wine.sh vbdec`). It needs `msvbvm60.dll` installed system-wide in the prefix, which the script does. P32Dasm and Semi VB Decompiler were not tried, because VBDec is enough.
 
 ---
 
@@ -222,8 +229,8 @@ Keeping `core/` separate from the GUI means that every Phase 6 extension (§7.1)
 
 | Phase | Work | Deliverable / exit criterion |
 |---|---|---|
-| **0. Setup** | ✅ Git repo, GPL-3.0 licence and GitHub repo created. ☐ Get `msvbvm60.dll` and run `apf.exe` under Wine. ☐ Test VBDec under Wine. ☐ Project skeleton with `uv`, `ruff` and `pytest`. | The original runs on Linux, and the toolchain is confirmed. |
-| **1. Oracle capture** | Record 15–25 reference cases (§4.2). Settle the open points in §3.5. | `tests/fixtures/*.json` and `docs/ORIGINAL_BEHAVIOUR.md`. |
+| **0. Setup** ✅ | Git and GitHub repo (private), GPL-3.0. The original runs under Wine 11.19 (`tools/wine.sh original`). VBDec 8.4.24 runs under Wine and parses `apf.exe` (`tools/wine.sh vbdec`). Python skeleton: `uv`, `ruff`, `mypy --strict`, `pytest`, PySide6 6.11 and pyqtgraph. | ✅ Done 2026-10-06; see §7.2. |
+| **1. Oracle capture** ✅ | 44 reference cases captured automatically on Xvfb (§4.2). The open points in §3.5 are settled. | ✅ Done 2026-10-06: `tests/fixtures/original/`, `docs/ORIGINAL_BEHAVIOUR.md`. Decompilation was **not needed**, so Phase 2b is expected to be skipped. |
 | **2. Core maths** | `core/` modules and CLI. | All fixtures match the original to the displayed precision, and the article example matches. |
 | **2b. (only if needed)** | P-code disassembly of the functions that don't match. | Every difference explained. |
 | **3. GUI parity** | Qt window that replicates the original layout and workflow: Design, Phase, Reset C, Clear, n = 1–6, scale buttons, tooltips, validation messages. | Side-by-side screenshots look equivalent, and a user can repeat the three web examples. |
@@ -232,6 +239,38 @@ Keeping `core/` separate from the GUI means that every Phase 6 extension (§7.1)
 | **6. Extensions** | **Deferred.** Chosen from the backlog in §7.1 after Phases 1–5 are complete. | — |
 
 Rough effort: Phases 0–5 take a few working sessions. Phase 1 needs the most hands-on time, because it means driving the GUI.
+
+### 7.2 Phase 0 results (2026-10-06)
+
+**Original program under Wine**
+- `tools/wine.sh setup` creates the project-local prefix `.wine/` and installs the VB6 runtime with a native DLL override.
+- `tools/wine.sh original` starts the program. The 520×474 form renders correctly with the defaults (F1 270 Hz, F2 3600 Hz, 3 filters, C = 10 nF, phase scale 1).
+- The program window runs under XWayland. Note that Wine also creates a hidden 800×800 "APF6" owner window.
+
+**What VBDec found in `apf.exe`**
+- P-code, VB6, project `APF6`.
+- One form (`Form1`) with 30 procedures and 90 embedded controls.
+- Public subs include `calcdb`, `gcalc` and `gvalues`. These are the procedures to read if Phase 2b ever becomes necessary.
+
+**Python environment**
+- Python 3.14 managed by `uv`, with a committed `uv.lock`.
+- `uv run pytest` runs 4 smoke tests, including a check that `esapf.core` never imports Qt, and an offscreen Qt/pyqtgraph log-axis plot.
+
+**Automation for Phase 1**
+- Xvfb was installed and used; see §4.2.
+
+### 7.3 Phase 1 results (2026-10-06)
+
+- **The maths is fully confirmed without decompiling.** Oppelt's equations with exactly 5 q-terms and 4 τ-terms reproduce every R value of the original. The phase and suppression formulas reproduce its graph to about 1 px.
+- **Behaviour spec:** `docs/ORIGINAL_BEHAVIOUR.md` covers display formats, button semantics, validation order and messages, and the graph geometry and colours.
+- **Quirks to reproduce faithfully** (Phase 3):
+  - F columns are truncated, not rounded.
+  - Reset C does no validation.
+  - Changing n clears the table and the graph.
+  - There is no F1 < F2 check (none is needed; the design is symmetric).
+  - There is no upper frequency limit.
+- **Fixtures** for the Phase 2 tests: `tests/fixtures/original/*.json` (44 cases) plus graph PNGs.
+- **Phase 2b (decompilation):** not needed.
 
 ### 7.1 Phase 6 backlog (to be decided after Phases 1–5)
 
@@ -279,8 +318,8 @@ Nothing here is scheduled. Once Phase 5 is done, each item will be marked **Acce
 | 2 | Stack: Python + PySide6 + pyqtgraph | ✅ Approved 2026-10-06 |
 | 3 | Licence: GPL-3.0 | ✅ 2026-10-06 |
 | 4 | Name: *Extra Sloppy All Pass Filter Designer* (repo `extra-sloppy-all-pass-filter-designer`, package `esapf`) | ✅ 2026-10-06 |
-| 5 | Hosting: GitHub repository | ✅ Created 2026-10-06 (private) |
-| 6 | UI: Phase 3 replicates the original layout. A modernised UI is backlog item 6.14. | ✅ Default |
+| 5 | Hosting: GitHub repository, **kept private until the software is finished** | ✅ Created 2026-10-06 |
+| 6 | UI: Phase 3 replicates the original 2002 layout. A modernised UI is optional backlog item 6.14. | ✅ Confirmed 2026-10-06 |
 | 7 | Phase 6 extensions | ⏸ Deferred until Phases 1–5 are complete (§7.1) |
 
 ---
