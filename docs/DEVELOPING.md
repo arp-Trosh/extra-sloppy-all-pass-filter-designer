@@ -36,7 +36,8 @@ src/esapf/
     app.py           entry point (esapf-gui), --bill, Ctrl+B mode switch, --self-test
   cli.py           command line (esapf)
 tests/             see "Tests" below
-tools/             wine.sh (original under Wine), oracle/ (fixture capture), render_gui.py
+tools/             wine.sh (original under Wine), oracle/ (fixture capture), render_gui.py,
+                   screenshots.py (README images)
 packaging/         PyInstaller spec + build script, icon generator
 docs/              FORMULAS, ORIGINAL_BEHAVIOUR (the spec), WINDOWS_TEST, this file
 ```

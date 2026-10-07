@@ -14,6 +14,8 @@ No code from the original is used.
 > exactly, and its formulas are documented. See **[docs/SUMMARY.md](docs/SUMMARY.md)** for the
 > outcome and **[ROADMAP.md](ROADMAP.md)** for the plan and the optional extensions.
 
+![The classic window, a copy of the 2002 original, after Design with the default inputs](docs/images/classic.png)
+
 ## Bill Mode
 
 Besides the classic window, which copies the 2002 original, there is a practical window
@@ -31,6 +33,8 @@ count carry over), or start with `esapf-gui --bill`. Bill Mode shows:
   section's resistor so its 90° frequency stays put;
 - the graph from either the perfect or the E-series resistors, with a settable X-axis range,
   a frequency scale, and the worst-case error and suppression in the F1–F2 band.
+
+![Bill Mode after Design with E96 resistors, graphing the E-series values](docs/images/bill_mode.png)
 
 ## Documentation
 
